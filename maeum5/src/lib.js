@@ -115,3 +115,34 @@ export function estimateBpm(samples) {
   const near = spec.filter(([f]) => Math.abs(f - peak) <= 0.1).reduce((s, [, p]) => s + p, 0);
   return { bpm: Math.round(peak * 60), quality: total ? near / total : 0 };
 }
+
+// 화면 → 서버 호출 (화면에서만 쓴다)
+export const api = async (path, body) => {
+  const r = await fetch(path, body && { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) });
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(j.error ?? `요청 실패 (${r.status})`);
+  return j;
+};
+
+// PHQ-9: 응답 검증(신뢰 경계) · 점수 구간 · 규칙 기반 추천 · 모델 추천 정리
+export const parseAnswers = (a) =>
+  Array.isArray(a) && a.length === 9 && a.every((v) => Number.isInteger(v) && v >= 0 && v <= 3) ? a : null;
+
+export const phqLevel = (total, levels) => levels.find((l) => total <= l.max) ?? levels.at(-1);
+
+export function rulePicks(answers, items) {
+  const order = answers.map((s, i) => [s, i]).filter(([s]) => s > 0).sort((a, b) => b[0] - a[0] || a[1] - b[1]);
+  const picks = [];
+  for (const [, i] of order) for (const id of items[i].routines) if (!picks.includes(id)) picks.push(id);
+  for (const id of ['sigh', 'label', 'walk']) if (!picks.includes(id)) picks.push(id); // 점수가 낮아도 3개를 채운다
+  return picks.slice(0, 3);
+}
+
+const MEDICAL = /처방|치료|완치|진단|증상|우울증/;
+// 모델 출력 정리: 목록에 있는 id만 중복 없이 3개. 의료 표현이 섞인 문장은 버린다(웰니스 문구 규칙).
+export function cleanReco(o, ids, fallbackPicks) {
+  const picks = [...new Set((Array.isArray(o?.picks) ? o.picks : []).filter((id) => ids.includes(id)))];
+  for (const id of fallbackPicks) if (picks.length < 3 && !picks.includes(id)) picks.push(id);
+  const message = typeof o?.message === 'string' ? o.message.trim().slice(0, 300) : '';
+  return { picks: picks.slice(0, 3), message: message && !MEDICAL.test(message) ? message : null };
+}

@@ -1,8 +1,8 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { DatabaseSync } from 'node:sqlite';
-import { CRISIS, EMOTIONS, SLOTS, cleanExtract, detectRisk, estimateBpm, insights, slotStats } from './src/lib.js';
-import { FEATURE_EVIDENCE, PERSONAS, ROUTINES } from './src/content.js';
+import { CRISIS, EMOTIONS, SLOTS, cleanExtract, cleanReco, detectRisk, estimateBpm, insights, parseAnswers, phqLevel, rulePicks, slotStats } from './src/lib.js';
+import { FEATURE_EVIDENCE, PERSONAS, PHQ9, ROUTINES } from './src/content.js';
 import { seed } from './seed.js';
 import { distPath } from './static.js';
 
@@ -83,7 +83,7 @@ test('배포 모드는 dist 밖 파일을 내보내지 않는다', () => {
 });
 
 test('콘텐츠: 의료 표현 없음, 행동마다 근거 2~3편', () => {
-  const shown = JSON.stringify([PERSONAS, ROUTINES.map(({ refs, ...r }) => ({ ...r, findings: refs.map((x) => x.finding) })), FEATURE_EVIDENCE.map(({ refs, ...f }) => f)]);
+  const shown = JSON.stringify([PERSONAS, PHQ9, ROUTINES.map(({ refs, ...r }) => ({ ...r, findings: refs.map((x) => x.finding) })), FEATURE_EVIDENCE.map(({ refs, ...f }) => f)]);
   for (const w of ['처방', '치료', '완화']) assert.ok(!shown.includes(w), w);
   for (const r of ROUTINES) {
     assert.ok(EMOTIONS.includes(r.emotion) && r.slots.every((x) => SLOTS.includes(x)), r.id);
@@ -91,4 +91,29 @@ test('콘텐츠: 의료 표현 없음, 행동마다 근거 2~3편', () => {
     assert.ok(r.steps.length <= 3 && ['A', 'B', 'C'].includes(r.level), r.id);
   }
   for (const e of EMOTIONS) assert.ok(ROUTINES.filter((r) => r.emotion === e).length >= 2, e);
+  assert.equal(PHQ9.items.length, 9);
+  assert.equal(PHQ9.options.length, 4);
+  for (const it of PHQ9.items) assert.ok(it.routines.every((id) => ROUTINES.some((r) => r.id === id)), it.short);
+  assert.deepEqual(PHQ9.levels.map((l) => l.max), [4, 9, 14, 19, 27]);
+});
+
+test('PHQ-9: 응답 검증 · 점수 구간 · 규칙 추천 · 모델 추천 정리', () => {
+  assert.deepEqual(parseAnswers([0, 1, 2, 3, 0, 1, 2, 3, 0]), [0, 1, 2, 3, 0, 1, 2, 3, 0]);
+  for (const bad of [null, {}, [], Array(8).fill(0), Array(10).fill(0), Array(9).fill(4), Array(9).fill(-1), Array(9).fill(1.5), [0, 0, 0, 0, 0, 0, 0, 0, '1']]) {
+    assert.equal(parseAnswers(bad), null, JSON.stringify(bad));
+  }
+  assert.equal(phqLevel(0, PHQ9.levels).max, 4);
+  assert.equal(phqLevel(4, PHQ9.levels).max, 4);
+  assert.equal(phqLevel(5, PHQ9.levels).max, 9);
+  assert.equal(phqLevel(10, PHQ9.levels).expert, true);
+  assert.equal(phqLevel(27, PHQ9.levels).max, 27);
+  // 점수가 높은 문항부터 관련 행동, 3개로 맞춘다
+  assert.deepEqual(rulePicks([0, 0, 3, 0, 0, 2, 0, 0, 0], PHQ9.items), ['todo', 'sigh', 'kind']);
+  assert.deepEqual(rulePicks(Array(9).fill(0), PHQ9.items), ['sigh', 'label', 'walk']);
+  const ids = ROUTINES.map((r) => r.id);
+  const r = cleanReco({ picks: ['box', 'made-up', 'box'], message: '우울증이 의심돼요' }, ids, ['sigh', 'label', 'walk']);
+  assert.deepEqual(r.picks, ['box', 'sigh', 'label']);
+  assert.equal(r.message, null);
+  assert.equal(cleanReco({ picks: [], message: ' 오늘도 버텨 줘서 고마워요. ' }, ids, ['sigh', 'label', 'walk']).message, '오늘도 버텨 줘서 고마워요.');
+  assert.deepEqual(cleanReco(null, ids, ['sigh', 'label', 'walk']).picks, ['sigh', 'label', 'walk']);
 });

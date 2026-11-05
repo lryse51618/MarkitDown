@@ -7,8 +7,8 @@ import Anthropic from '@anthropic-ai/sdk';
 import { createServer as createVite } from 'vite';
 import { seed } from './seed.js';
 import { serveStatic } from './static.js';
-import { PERSONAS, ROUTINES } from './src/content.js';
-import { CRISIS, EMOTIONS, OK, SLOTS, cleanExtract, dateKey, detectRisk, slotOf, slotStats, stamp } from './src/lib.js';
+import { PERSONAS, PHQ9, ROUTINES } from './src/content.js';
+import { CRISIS, EMOTIONS, OK, SLOTS, cleanExtract, cleanReco, dateKey, detectRisk, parseAnswers, rulePicks, slotOf, slotStats, stamp } from './src/lib.js';
 
 const PORT = Number(process.env.PORT ?? 5173);
 const PROD = process.argv.includes('--prod');
@@ -23,6 +23,7 @@ db.exec(`
   CREATE TABLE IF NOT EXISTS checkins (id INTEGER PRIMARY KEY, persona TEXT, ts TEXT, slot TEXT, emotion TEXT, mood INTEGER, place TEXT, source TEXT);
   CREATE TABLE IF NOT EXISTS messages (id INTEGER PRIMARY KEY, persona TEXT, ts TEXT, role TEXT, content TEXT);
   CREATE TABLE IF NOT EXISTS done (id INTEGER PRIMARY KEY, persona TEXT, ts TEXT, routine TEXT, after INTEGER);
+  CREATE TABLE IF NOT EXISTS surveys (id INTEGER PRIMARY KEY, ts TEXT, answers TEXT, total INTEGER, crisis INTEGER, picks TEXT, source TEXT);
 `);
 if (!db.prepare('SELECT 1 FROM daily LIMIT 1').get()) seed(db);
 
@@ -103,6 +104,10 @@ function contextNote(p, now) {
 
 let client;
 let quota = { day: '', chats: 0 };
+const withinQuota = (now) => {
+  if (quota.day !== dateKey(now)) quota = { day: dateKey(now), chats: 0 };
+  return ++quota.chats <= MAX_CHATS_PER_DAY;
+};
 async function chat(p, text) {
   const now = new Date();
   const ts = stamp(now);
@@ -111,8 +116,7 @@ async function chat(p, text) {
     insertMessage.run(p, ts, 'assistant', CRISIS);
     return { reply: CRISIS, risk: 'urgent', slot: slotOf(now) };
   }
-  if (quota.day !== dateKey(now)) quota = { day: dateKey(now), chats: 0 };
-  if (++quota.chats > MAX_CHATS_PER_DAY) throw new Error(`오늘 대화 한도(${MAX_CHATS_PER_DAY}번)를 넘었어요. 내일 다시 이용해 주세요`);
+  if (!withinQuota(now)) throw new Error(`오늘 대화 한도(${MAX_CHATS_PER_DAY}번)를 넘었어요. 내일 다시 이용해 주세요`);
   const note = contextNote(p, now);
   const history = q('SELECT role, content FROM messages WHERE persona = ? ORDER BY id').all(p).map(({ role, content }) => ({ role, content }));
   while (history.length && history[0].role !== 'user') history.shift(); // API 대화는 user로 시작해야 한다
@@ -143,6 +147,60 @@ async function chat(p, text) {
   if (data.emotion || data.mood != null) insertCheckin.run(p, ts, slot, data.emotion, data.mood, data.place, 'chat');
   if (data.sleep_hours != null || data.caffeine_cups != null) upsertDaily.run(p, dateKey(now), data.sleep_hours, data.caffeine_cups, null);
   return { ...data, slot };
+}
+
+// PHQ-9 결과 → 5분 행동 추천. Claude는 근거표에 있는 행동 id 중에서만 고른다(목록 밖 행동은 나올 수 없음).
+const RECO_SYSTEM = `너는 '마음 5분 매트릭스'의 셀프케어 보조 도우미야. 의료 서비스가 아니야.
+사용자가 PHQ-9 자기 점검 9문항에 0~3점(0 전혀 없음, 3 거의 매일)으로 답했어. 점수가 높은 문항을 보고, 아래 5분 행동 목록에서 지금 해보기 좋은 행동 3개를 골라 picks에 id로 넣어. 가장 추천하는 것부터.
+message에는 사용자에게 건넬 따뜻한 말을 2문장, 120자 이내로 써. 지금 마음을 알아주고 작은 행동을 권하는 말만 해. 점수를 판정하지 말고, 진단명·약·'처방'·'치료'·'완치'·'증상'·'우울증' 같은 의료 표현은 쓰지 마.
+
+# 문항
+${PHQ9.items.map((it, i) => `${i + 1}. ${it.short}`).join('\n')}
+
+# 5분 행동 목록 (id: 이름 — 어울리는 마음, 원리)
+${ROUTINES.map((r) => `${r.id}: ${r.title} — ${r.emotion}, ${r.principle}`).join('\n')}`;
+const ROUTINE_IDS = ROUTINES.map((r) => r.id);
+const RECO_SCHEMA = {
+  type: 'object',
+  properties: { message: { type: 'string' }, picks: { type: 'array', items: { type: 'string', enum: ROUTINE_IDS } } },
+  required: ['message', 'picks'],
+  additionalProperties: false,
+};
+
+async function recommend(answers) {
+  const now = new Date();
+  const total = answers.reduce((s, v) => s + v, 0);
+  const crisis = answers[8] > 0; // 9번(자해 생각)이 1점 이상이면 모델을 거치지 않고 안전 안내를 먼저 띄운다
+  const fallback = rulePicks(answers, PHQ9.items);
+  let reco = { picks: fallback, message: null };
+  let source = 'rule';
+  if (!crisis && withinQuota(now)) {
+    try {
+      client ??= new Anthropic();
+      const res = await client.beta.messages.create({
+        model: MODEL,
+        max_tokens: 16000,
+        betas: ['server-side-fallback-2026-07-01'],
+        fallbacks: 'default',
+        cache_control: { type: 'ephemeral' },
+        output_config: { effort: 'low', format: { type: 'json_schema', schema: RECO_SCHEMA } },
+        system: RECO_SYSTEM,
+        messages: [{ role: 'user', content: `문항별 점수: ${answers.map((s, i) => `${i + 1}번 ${s}점`).join(', ')} (총 ${total}/27점)` }],
+      }, { timeout: 20_000, maxRetries: 1 });
+      const u = res.usage;
+      console.log(`[survey] ${res.model} in=${u.input_tokens} cache_read=${u.cache_read_input_tokens ?? 0} out=${u.output_tokens}`);
+      if (res.stop_reason !== 'refusal') {
+        reco = cleanReco(JSON.parse(res.content.find((b) => b.type === 'text')?.text ?? '{}'), ROUTINE_IDS, fallback);
+        source = 'claude';
+      }
+    } catch (e) {
+      console.error('[survey] Claude 추천 실패 → 규칙 추천으로 대체:', explain(e));
+    }
+  }
+  const message = crisis ? PHQ9.crisisMessage : reco.message ?? PHQ9.defaultMessage;
+  const { lastInsertRowid } = q('INSERT INTO surveys (ts, answers, total, crisis, picks, source) VALUES (?, ?, ?, ?, ?, ?)')
+    .run(stamp(now), JSON.stringify(answers), total, crisis ? 1 : 0, JSON.stringify(reco.picks), source);
+  return { id: Number(lastInsertRowid), total, crisis, message, picks: reco.picks, source };
 }
 
 const explain = (e) =>
@@ -178,7 +236,13 @@ async function api(req, res) {
     }
     if (req.method !== 'POST') return send(res, 404, { error: '없는 주소예요' });
     const body = await readJson(req);
-    if (!isPersona(body.p)) return send(res, 400, { error: '페르소나는 A 또는 B예요' });
+    if (url.pathname === '/api/survey') {
+      const answers = parseAnswers(body.answers);
+      if (!answers) return send(res, 400, { error: '9개 문항에 모두 0~3점으로 답해 주세요' });
+      return send(res, 200, await recommend(answers));
+    }
+    // U = 설문 화면의 익명 사용자 (루틴 완료 기록만 남긴다)
+    if (!isPersona(body.p) && !(body.p === 'U' && url.pathname === '/api/done')) return send(res, 400, { error: '페르소나는 A 또는 B예요' });
     const now = new Date();
     if (url.pathname === '/api/chat') {
       const text = typeof body.text === 'string' ? body.text.trim() : '';

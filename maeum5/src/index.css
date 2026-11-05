@@ -1,1 +1,14 @@
 @import "tailwindcss";
+
+@theme {
+  --font-sans: "Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont, system-ui, "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
+}
+
+@keyframes enter { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
+@keyframes slide { from { opacity: 0; transform: translateX(28px); } to { opacity: 1; transform: none; } }
+.enter { animation: enter 0.4s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+.slide { animation: slide 0.35s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+@media (prefers-reduced-motion: reduce) { .enter, .slide { animation: none; } }
+
+/* 한국어는 단어 중간에서 줄바꿈하지 않게 */
+body { word-break: keep-all; overflow-wrap: break-word; }

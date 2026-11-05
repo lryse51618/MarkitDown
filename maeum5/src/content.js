@@ -52,6 +52,8 @@ const R = {
   wang: ['Wang, W., den Brinker, A. C., Stuijk, S., & de Haan, G. (2017). Algorithmic principles of remote PPG. IEEE Transactions on Biomedical Engineering, 64(7), 1479–1491.', '이 앱이 쓰는 POS 알고리즘 — 조명 세기 변화에 강한 RGB 투영 방식.'],
   kim: ['Kim, H.-G., Cheon, E.-J., Bai, D.-S., Lee, Y. H., & Koo, B.-H. (2018). Stress and heart rate variability: A meta-analysis and review of the literature. Psychiatry Investigation, 15(3), 235–245.', '스트레스 상황에서 심박변이도(HRV) 같은 자율신경 지표가 달라짐 (메타분석).'],
   drake: ['Drake, C., Roehrs, T., Shambroom, J., & Roth, T. (2013). Caffeine effects on sleep taken 0, 3, or 6 hours before going to bed. Journal of Clinical Sleep Medicine, 9(11), 1195–1200.', '잠들기 6시간 전에 마신 카페인 400mg도 총수면을 1시간 넘게 줄임 (실험).'],
+  kroenke: ['Kroenke, K., Spitzer, R. L., & Williams, J. B. W. (2001). The PHQ-9: Validity of a brief depression severity measure. Journal of General Internal Medicine, 16(9), 606–613.', '9문항 점수가 우울감의 정도와 잘 맞고, 5·10·15·20점이 정도를 나누는 기준으로 쓰임 (타당도 연구).'],
+  park: ['Park, S.-J., Choi, H.-R., Choi, J.-H., Kim, K.-W., & Hong, J.-P. (2010). Reliability and validity of the Korean version of the Patient Health Questionnaire-9 (PHQ-9). Anxiety and Mood, 6(2), 119–124.', '한국어판 PHQ-9의 신뢰도와 타당도를 확인한 연구.'],
 };
 const refs = (...keys) => keys.map((k) => ({ cite: R[k][0], finding: R[k][1] }));
 
@@ -132,8 +134,37 @@ export const ROUTINES = [
 ];
 
 export const FEATURE_EVIDENCE = [
+  { id: 'phq9', title: 'PHQ-9 마음 체크', use: '지난 2주의 마음 상태를 9문항으로 스스로 점검하고, 점수 구간은 표준 기준을 따라요.', limit: '진단이 아니에요. 10점 이상이면 전문가와 이야기해 보길 권하는 기준으로만 써요.', refs: refs('kroenke', 'park') },
   { id: 'rppg', title: '웹캠 심박 측정 (rPPG)', use: '이마 피부색의 미세한 변화로 맥박을 추정하고, 평소 대비 변화만 참고로 보여줘요.', limit: '조명·움직임에 민감하고 의료용 측정이 아니에요.', refs: refs('verkruysse', 'poh', 'wang') },
   { id: 'hr', title: '심박과 긴장 상태', use: '평균 심박이 평소보다 10 이상 높으면 호흡 루틴을 권해요.', limit: '스트레스 지수는 심박변이도(HRV)가 필요해 아직 계산하지 않아요.', refs: refs('kim') },
   { id: 'chat', title: '대화형 감정 체크인', use: '설문 대신 대화로 감정에 이름을 붙이며 기록해요.', limit: '감정 분류는 Claude가 정해진 5개 선택지 안에서만 해요.', refs: refs('lieberman') },
   { id: 'caffeine', title: '카페인·수면 분석', use: '카페인을 마신 날과 그날 밤 수면의 시차 상관을 봐요.', limit: `기록이 14일 미만이면 분석하지 않고, 결과는 "경향"으로만 말해요.`, refs: refs('drake') },
 ];
+
+// PHQ-9 한국어판 문항(Kroenke et al., 2001; Park et al., 2010). 자기 점검용이며 진단이 아니다.
+// routines: 그 문항 점수가 높을 때 어울리는 5분 행동 id (규칙 기반 추천과 Claude 추천의 대체값에 쓴다)
+export const PHQ9 = {
+  prompt: '지난 2주일 동안 당신은 다음의 문제들로 인해서 얼마나 자주 방해를 받았습니까?',
+  options: ['전혀 방해 받지 않았다', '며칠 동안 방해 받았다', '7일 이상 방해 받았다', '거의 매일 방해 받았다'],
+  items: [
+    { text: '일 또는 여가 활동을 하는 데 흥미나 즐거움을 느끼지 못함', short: '흥미·즐거움 저하', routines: ['walk', 'toes'] },
+    { text: '기분이 가라앉거나, 우울하거나, 희망이 없음', short: '가라앉은 기분', routines: ['kind', 'reread'] },
+    { text: '잠이 들거나 계속 잠을 자는 것이 어려움, 또는 잠을 너무 많이 잠', short: '잠 문제', routines: ['todo', 'sigh'] },
+    { text: '피곤하다고 느끼거나 기운이 거의 없음', short: '피로·기운 없음', routines: ['toes', 'walk'] },
+    { text: '입맛이 없거나 과식을 함', short: '식욕 변화', routines: ['label', 'walk'] },
+    { text: '자신을 부정적으로 봄 - 혹은 자신이 실패자라고 느끼거나 자신 또는 가족을 실망시킴', short: '자기 비난', routines: ['kind', 'hello'] },
+    { text: '신문을 읽거나 텔레비전 보는 것과 같은 일에 집중하는 것이 어려움', short: '집중 어려움', routines: ['box', 'sigh'] },
+    { text: '다른 사람들이 주목할 정도로 너무 느리게 움직이거나 말을 함. 또는 반대로 평상시보다 많이 움직여서, 너무 안절부절 못하거나 들떠 있음', short: '느려짐·안절부절', routines: ['sigh', 'step'] },
+    { text: '자신이 죽는 것이 더 낫다고 생각하거나 어떤 식으로든 자신을 해칠 것이라고 생각함', short: '자해 생각', routines: ['sigh', 'label'] },
+  ],
+  // 구간은 PHQ-9 표준 기준(0–4, 5–9, 10–14, 15–19, 20–27). 문구는 판정이 아니라 안내로 쓴다.
+  levels: [
+    { max: 4, label: '마음이 비교적 안정적이에요', text: '지난 2주 동안 큰 방해 없이 지냈어요. 지금의 리듬을 지켜 가요.' },
+    { max: 9, label: '조금 지친 신호가 보여요', text: '가볍게 지친 신호가 보여요. 작은 행동으로 나를 먼저 챙겨 주세요.' },
+    { max: 14, label: '마음이 꽤 무거운 상태예요', text: '혼자 버티기보다 믿을 만한 사람이나 전문가와 이야기해 보길 권해요.', expert: true },
+    { max: 19, label: '많이 힘든 상태예요', text: '정신건강복지센터나 전문 상담과 이야기해 보길 꼭 권해요.', expert: true },
+    { max: 27, label: '매우 힘든 상태예요', text: '오늘 바로 전문가와 이야기해 주세요. 혼자 견디지 않아도 돼요.', expert: true },
+  ],
+  defaultMessage: '솔직하게 답해 줘서 고마워요. 지금 마음에 맞는 5분 행동을 골라 봤어요.',
+  crisisMessage: '응답 중에 스스로를 해치는 생각이 있었다고 알려 주셨어요. 지금 바로 전문 상담사와 이야기할 수 있어요.',
+};

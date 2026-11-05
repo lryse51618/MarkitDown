@@ -1,7 +1,7 @@
 // 마음 5분 매트릭스 — 시연 화면 (한 화면에 페르소나 전환 · 7일 차트 · 웹캠 심박 · AI 대화 · 5분 루틴)
 import { useEffect, useRef, useState } from 'react';
 import { FEATURE_EVIDENCE, LEVELS, PERSONAS, ROUTINES } from './content.js';
-import { EMOTIONS, MIN_DAYS, dateKey, estimateBpm, insights, mean, slotOf, slotStats, SLOTS } from './lib.js';
+import { EMOTIONS, MIN_DAYS, api, dateKey, estimateBpm, insights, mean, slotOf, slotStats, SLOTS } from './lib.js';
 
 // 차트 색: dataviz 기본 팔레트 1~3번(색약 검사 통과). 3번 청록은 대비 3:1 미만이라 값 라벨·표 보기를 함께 둔다.
 const C = { sleep: '#2a78d6', caffeine: '#eb6834', hr: '#1baf7a', grid: '#e1e0d9', axis: '#c3c2b7', muted: '#898781', ink: '#0b0b0b' };
@@ -13,12 +13,6 @@ const AFTER = ['그대로예요', '조금 나아졌어요', '많이 나아졌어
 const DURATION = 15000; // 심박 측정 시간(ms)
 const MIN_QUALITY = 0.25; // 이보다 신호가 약하면 저장하지 않는다
 
-const api = async (path, body) => {
-  const r = await fetch(path, body && { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) });
-  const j = await r.json().catch(() => ({}));
-  if (!r.ok) throw new Error(j.error ?? `요청 실패 (${r.status})`);
-  return j;
-};
 const md = (date) => `${Number(date.slice(5, 7))}/${Number(date.slice(8, 10))}`;
 const r1 = (v) => (v == null ? '–' : Math.round(v * 10) / 10);
 const daysAgo = (n) => dateKey(new Date(Date.now() - n * 864e5));
@@ -90,6 +84,7 @@ export default function App() {
             <h1 className="text-lg font-bold">마음 5분 매트릭스</h1>
             <p className="text-xs text-stone-500">셀프케어 보조 앱 · 의료 서비스가 아니에요</p>
           </div>
+          <a href="/" className="rounded-full px-3 py-1.5 text-sm text-stone-600 hover:bg-stone-100">마음 체크 →</a>
           <div role="group" aria-label="시연 페르소나 전환" className="flex rounded-full bg-stone-100 p-1 text-sm">
             {Object.values(PERSONAS).map((x) => (
               <button key={x.id} type="button" aria-pressed={p === x.id} onClick={() => setP(x.id)}
