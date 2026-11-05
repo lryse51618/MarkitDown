@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { DatabaseSync } from 'node:sqlite';
 import { CRISIS, EMOTIONS, SLOTS, cleanExtract, cleanReco, detectRisk, estimateBpm, insights, parseAnswers, phqLevel, rulePicks, slotStats } from './src/lib.js';
-import { FEATURE_EVIDENCE, PERSONAS, PHQ9, ROUTINES } from './src/content.js';
+import { FEATURE_EVIDENCE, INTEREST, PERSONAS, PHQ9, PLANS, ROUTINES } from './src/content.js';
 import { seed } from './seed.js';
 import { distPath } from './static.js';
 
@@ -83,7 +83,7 @@ test('배포 모드는 dist 밖 파일을 내보내지 않는다', () => {
 });
 
 test('콘텐츠: 의료 표현 없음, 행동마다 근거 2~3편', () => {
-  const shown = JSON.stringify([PERSONAS, PHQ9, ROUTINES.map(({ refs, ...r }) => ({ ...r, findings: refs.map((x) => x.finding) })), FEATURE_EVIDENCE.map(({ refs, ...f }) => f)]);
+  const shown = JSON.stringify([PERSONAS, PHQ9, PLANS, INTEREST, ROUTINES.map(({ refs, ...r }) => ({ ...r, findings: refs.map((x) => x.finding) })), FEATURE_EVIDENCE.map(({ refs, ...f }) => f)]);
   for (const w of ['처방', '치료', '완화']) assert.ok(!shown.includes(w), w);
   for (const r of ROUTINES) {
     assert.ok(EMOTIONS.includes(r.emotion) && r.slots.every((x) => SLOTS.includes(x)), r.id);
@@ -95,6 +95,13 @@ test('콘텐츠: 의료 표현 없음, 행동마다 근거 2~3편', () => {
   assert.equal(PHQ9.options.length, 4);
   for (const it of PHQ9.items) assert.ok(it.routines.every((id) => ROUTINES.some((r) => r.id === id)), it.short);
   assert.deepEqual(PHQ9.levels.map((l) => l.max), [4, 9, 14, 19, 27]);
+  // 요금: 상품 범위 고정, 유료 상품마다 '구분할 점'이 있고, AI 보고서는 전문가 검토가 아님을 밝힌다
+  assert.deepEqual(PLANS.products.map((p) => p.id), ['free', 'report', 'consult', 'org']);
+  assert.deepEqual(PLANS.products.filter((p) => p.poll).map((p) => p.id), ['report', 'consult']);
+  for (const p of PLANS.products) assert.ok(p.includes.length && p.notes.length, p.id);
+  assert.ok(PLANS.products.find((p) => p.id === 'report').notes.some((n) => n.includes('AI') && n.includes('검토하지 않아요')));
+  assert.ok(PLANS.priceNote.includes('검증 예정 제안 가격'));
+  assert.equal(INTEREST.length, 3);
 });
 
 test('PHQ-9: 응답 검증 · 점수 구간 · 규칙 추천 · 모델 추천 정리', () => {

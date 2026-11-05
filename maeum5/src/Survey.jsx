@@ -1,9 +1,11 @@
-// 마음 체크 — PHQ-9 카드형 설문 → 점수 카드 + 5분 행동 추천 (메인 화면). 페르소나 시연 대시보드는 /demo
+// 마음 체크 — PHQ-9 카드형 설문 → 점수 카드 + 5분 행동 추천 (메인 화면). 페르소나 시연 대시보드는 /demo, 요금 안내는 /pricing
 import { useRef, useState } from 'react';
-import { PHQ9, ROUTINES } from './content.js';
+import { PHQ9, PLANS, ROUTINES } from './content.js';
 import { api, phqLevel } from './lib.js';
+import { Logo, PlanCard } from './common.jsx';
 
 const AFTER = ['그대로예요', '조금 나아졌어요', '많이 나아졌어요'];
+const CTA = 'rounded-2xl bg-brand-strong text-[19px] font-bold text-white transition hover:bg-brand-deep active:scale-[0.98]'; // 흰 글자는 19px 굵게(큰 글씨 대비 기준)
 
 export default function Survey() {
   const [step, setStep] = useState(-1); // -1 소개, 0~8 문항, 9 결과
@@ -45,13 +47,13 @@ export default function Survey() {
       <Center>
         <p className="text-[17px] font-semibold text-[#191F28]">결과를 불러오지 못했어요</p>
         <p className="mt-1 text-sm text-[#8B95A1]">{err}</p>
-        <button type="button" onClick={() => submit(answers)} className="mt-6 rounded-2xl bg-[#3182F6] px-8 py-4 font-semibold text-white transition active:scale-[0.98]">다시 시도</button>
+        <button type="button" onClick={() => submit(answers)} className={`${CTA} mt-6 px-8 py-4`}>다시 시도</button>
       </Center>
     );
   if (!result)
     return (
       <Center>
-        <div className="motion-safe:animate-pulse"><Spark size={48} /></div>
+        <div className="motion-safe:animate-pulse"><Logo size={56} /></div>
         <p className="mt-5 text-[17px] font-semibold text-[#191F28]">결과를 정리하고 있어요</p>
         <p className="mt-1 text-sm text-[#8B95A1]">잠시만 기다려 주세요</p>
       </Center>
@@ -61,31 +63,20 @@ export default function Survey() {
 
 const Center = ({ children }) => <div className="enter flex min-h-dvh flex-col items-center justify-center bg-white px-6 text-center">{children}</div>;
 
-const Spark = ({ size = 56 }) => (
-  <svg width={size} height={size} viewBox="0 0 48 48" aria-hidden="true">
-    <defs>
-      <linearGradient id="spark" x1="0" y1="0" x2="1" y2="1">
-        <stop offset="0" stopColor="#3182F6" />
-        <stop offset="1" stopColor="#8B5CF6" />
-      </linearGradient>
-    </defs>
-    <path d="M24 2C25.8 14 34 22.2 46 24C34 25.8 25.8 34 24 46C22.2 34 14 25.8 2 24C14 22.2 22.2 14 24 2Z" fill="url(#spark)" />
-  </svg>
-);
-
 function Intro({ onStart }) {
   return (
-    <div className="flex min-h-dvh flex-col bg-[radial-gradient(120%_60%_at_50%_100%,#dbeafe_0%,#eff6ff_40%,#ffffff_75%)]">
-      <header className="mx-auto flex w-full max-w-md items-center px-6 pt-5 text-sm">
-        <span className="font-bold text-[#191F28]">마음 5분</span>
-        <a href="/demo" className="ml-auto text-[#8B95A1] hover:text-[#333D4B]">시연 대시보드</a>
+    <div className="flex min-h-dvh flex-col bg-[radial-gradient(120%_60%_at_50%_100%,#d6f5e3_0%,#eefbf3_40%,#ffffff_75%)]">
+      <header className="mx-auto flex w-full max-w-md items-center gap-2 px-6 pt-5 text-sm">
+        <span className="flex items-center gap-2 font-bold text-[#191F28]"><Logo size={24} />마음 5분</span>
+        <a href="/pricing" className="ml-auto text-[#8B95A1] hover:text-[#333D4B]">요금 안내</a>
+        <a href="/demo" className="ml-3 text-[#8B95A1] hover:text-[#333D4B]">시연 대시보드</a>
       </header>
       <main className="enter mx-auto flex w-full max-w-md flex-1 flex-col items-center justify-center px-6 text-center">
-        <Spark />
+        <Logo size={72} />
         <h1 className="mt-6 text-[28px] font-bold leading-snug tracking-tight text-[#191F28]">지난 2주,<br />마음은 어땠나요?</h1>
         <p className="mt-3 text-[16px] leading-relaxed text-[#6B7684]">9개 질문에 답하면 지금 마음 상태와<br />바로 해볼 수 있는 5분 행동을 알려드려요.</p>
         <div className="mt-8 flex flex-wrap justify-center gap-2 text-sm text-[#4E5968]">
-          {['9문항', '약 1분', '이름 없이 저장'].map((t) => (
+          {['9문항', '약 1분', '무료', '이름 없이 저장'].map((t) => (
             <span key={t} className="rounded-full bg-white/80 px-3 py-1.5 shadow-sm ring-1 ring-black/5">{t}</span>
           ))}
         </div>
@@ -94,10 +85,7 @@ function Intro({ onStart }) {
         <p className="text-center text-xs leading-relaxed text-[#8B95A1]">
           PHQ-9 문항으로 하는 자기 점검이에요. 진단이 아니에요.<br />추천을 위해 응답 점수가 Claude API(Anthropic)로 전송돼요.
         </p>
-        <button type="button" onClick={onStart}
-          className="mt-4 w-full rounded-2xl bg-[#3182F6] py-4 text-[17px] font-semibold text-white shadow-lg shadow-blue-500/20 transition hover:bg-[#1B64DA] active:scale-[0.98]">
-          동의하고 시작하기
-        </button>
+        <button type="button" onClick={onStart} className={`${CTA} mt-4 w-full py-4 shadow-lg shadow-brand/20`}>동의하고 시작하기</button>
       </footer>
     </div>
   );
@@ -115,7 +103,7 @@ function Question({ step, answer, onChoose, onBack }) {
           <span className="ml-auto pr-4 text-sm font-medium tabular-nums text-[#8B95A1]">{step + 1} / 9</span>
         </div>
         <div className="h-1 bg-[#F2F4F6]" role="progressbar" aria-label="진행도" aria-valuemin={0} aria-valuemax={9} aria-valuenow={step + 1}>
-          <div className="h-full rounded-r-full bg-[#3182F6] transition-[width] duration-500 ease-out" style={{ width: `${((step + 1) / 9) * 100}%` }} />
+          <div className="h-full rounded-r-full bg-brand transition-[width] duration-500 ease-out" style={{ width: `${((step + 1) / 9) * 100}%` }} />
         </div>
       </div>
       <main key={step} className="slide mx-auto max-w-md px-6 pb-10 pt-8">
@@ -126,9 +114,9 @@ function Question({ step, answer, onChoose, onBack }) {
           {PHQ9.options.map((label, score) => (
             <button key={score} type="button" aria-pressed={answer === score} onClick={() => onChoose(score)}
               className={`flex w-full items-center justify-between rounded-2xl px-5 py-[18px] text-left text-[17px] font-semibold transition duration-150 active:scale-[0.98] ${
-                answer === score ? 'bg-[#E8F3FF] text-[#1B64DA] ring-2 ring-[#3182F6]' : 'bg-[#F2F4F6] text-[#333D4B] hover:bg-[#E5E8EB]'}`}>
+                answer === score ? 'bg-brand-soft text-brand-ink ring-2 ring-brand' : 'bg-[#F2F4F6] text-[#333D4B] hover:bg-[#E5E8EB]'}`}>
               {label}
-              <span className={`ml-3 shrink-0 text-sm font-medium ${answer === score ? 'text-[#3182F6]' : 'text-[#B0B8C1]'}`}>{score}점</span>
+              <span className={`ml-3 shrink-0 text-sm font-medium ${answer === score ? 'text-brand-ink' : 'text-[#B0B8C1]'}`}>{score}점</span>
             </button>
           ))}
         </div>
@@ -145,7 +133,7 @@ function Result({ result, answers, onRestart }) {
   return (
     <div className="min-h-dvh bg-[#F2F4F6]">
       <header className="sticky top-0 z-10 bg-[#F2F4F6]/90 backdrop-blur">
-        <div className="mx-auto flex max-w-md items-center px-6 py-4 text-[17px] font-bold text-[#191F28]">마음 체크 결과</div>
+        <div className="mx-auto flex max-w-md items-center gap-2 px-6 py-4 text-[17px] font-bold text-[#191F28]"><Logo size={24} />마음 체크 결과</div>
       </header>
       <main className="enter mx-auto max-w-md space-y-3 px-4 pb-10">
         {result.crisis && <Crisis message={result.message} />}
@@ -183,6 +171,18 @@ function Result({ result, answers, onRestart }) {
           </div>
         </section>
 
+        {/* 위기 신호가 있으면 유료 상품을 권하지 않는다 */}
+        {!result.crisis && (
+          <section className="pt-3">
+            <h2 className="px-2 text-[20px] font-bold tracking-tight text-[#191F28]">더 깊이 돌아보고 싶다면</h2>
+            <p className="mt-1 px-2 text-[15px] leading-relaxed text-[#4E5968]">지금 받은 결과와 5분 행동은 계속 무료예요. 아래는 출시 전 상품이에요.</p>
+            <div className="mt-3 space-y-3">
+              {PLANS.products.filter((p) => p.poll).map((p) => <PlanCard key={p.id} plan={p} compact />)}
+            </div>
+            <a href="/pricing" className="mt-3 block px-2 text-sm font-semibold text-brand-ink underline">요금 안내 전체 보기</a>
+          </section>
+        )}
+
         <button type="button" onClick={onRestart} className="w-full rounded-2xl bg-white py-4 text-[16px] font-semibold text-[#333D4B] transition hover:bg-[#E5E8EB] active:scale-[0.98]">
           다시 체크하기
         </button>
@@ -197,7 +197,7 @@ function Result({ result, answers, onRestart }) {
 function Meter({ total }) {
   return (
     <div className="mt-5" aria-hidden="true">
-      <div className="relative h-2 rounded-full bg-gradient-to-r from-[#C9E2FF] via-[#64A8FF] to-[#1B64DA]">
+      <div className="relative h-2 rounded-full bg-gradient-to-r from-[#CFF4DE] via-brand to-brand-ink">
         <span className="absolute top-1/2 size-4 -translate-x-1/2 -translate-y-1/2 rounded-full border-[3px] border-white bg-[#191F28] shadow" style={{ left: `${(total / 27) * 100}%` }} />
       </div>
       <div className="relative mt-2 h-4 text-[11px] tabular-nums text-[#B0B8C1]">
@@ -213,7 +213,7 @@ function Crisis({ message }) {
       <p className="text-[19px] font-bold text-[#C62828]">혼자 견디지 않아도 돼요</p>
       <p className="mt-2 text-[15px] leading-relaxed text-[#5B2525]">{message}</p>
       <div className="mt-4 grid gap-2">
-        <a href="tel:109" className="rounded-2xl bg-[#E5484D] py-4 text-center font-semibold text-white transition active:scale-[0.98]">109 자살예방상담 (24시간)</a>
+        <a href="tel:109" className="rounded-2xl bg-[#D93B3B] py-4 text-center text-[19px] font-bold text-white transition active:scale-[0.98]">109 자살예방상담 (24시간)</a>
         <a href="tel:15770199" className="rounded-2xl bg-white py-4 text-center font-semibold text-[#C62828] ring-1 ring-[#FFD4D4] transition active:scale-[0.98]">1577-0199 정신건강위기상담</a>
       </div>
       <p className="mt-3 text-sm text-[#7A3B3B]">위험이 급하다면 112 또는 119에 바로 연락해 주세요.</p>
@@ -227,7 +227,7 @@ function Expert() {
       <p className="text-[17px] font-bold text-[#191F28]">전문가와 이야기해 보세요</p>
       <p className="mt-1 text-[15px] leading-relaxed text-[#4E5968]">가까운 정신건강복지센터에서 상담을 받을 수 있어요.</p>
       <div className="mt-4 grid grid-cols-2 gap-2 text-sm font-semibold">
-        <a href="tel:15770199" className="rounded-2xl bg-[#E8F3FF] py-3 text-center text-[#1B64DA]">1577-0199 상담</a>
+        <a href="tel:15770199" className="rounded-2xl bg-brand-soft py-3 text-center text-brand-ink">1577-0199 상담</a>
         <a href="https://www.mentalhealth.go.kr" target="_blank" rel="noreferrer" className="rounded-2xl bg-[#F2F4F6] py-3 text-center text-[#333D4B]">정신건강정보포털</a>
       </div>
     </section>
@@ -245,10 +245,10 @@ function Action({ r, best }) {
       setErr(e.message);
     }
   };
-  const card = (
-    <article className={`rounded-3xl bg-white p-6 ${best ? 'rounded-[22px]' : ''}`}>
+  return (
+    <article className={`rounded-3xl bg-white p-6 ${best ? 'shadow-lg shadow-brand/10 ring-2 ring-brand' : ''}`}>
       <div className="flex items-center gap-2 text-sm">
-        {best && <span className="rounded-full bg-[#E8F3FF] px-2.5 py-1 font-semibold text-[#1B64DA]">가장 추천</span>}
+        {best && <span className="rounded-full bg-brand-soft px-2.5 py-1 font-semibold text-brand-ink">가장 추천</span>}
         <span className="min-w-0 truncate text-[#8B95A1]">{r.situation}</span>
         <span className="ml-auto shrink-0 rounded-full bg-[#F2F4F6] px-2.5 py-1 font-semibold text-[#4E5968]">{r.minutes}분</span>
       </div>
@@ -264,7 +264,7 @@ function Action({ r, best }) {
       <p className="mt-3 text-sm leading-relaxed text-[#8B95A1]">{r.why} · 근거 {r.level}등급</p>
       {state === 'idle' && (
         <button type="button" onClick={() => setState('rate')}
-          className={`mt-4 w-full rounded-2xl py-4 font-semibold transition active:scale-[0.98] ${best ? 'bg-[#3182F6] text-white hover:bg-[#1B64DA]' : 'bg-[#E8F3FF] text-[#1B64DA] hover:bg-[#D6E8FF]'}`}>
+          className={best ? `${CTA} mt-4 w-full py-4` : 'mt-4 w-full rounded-2xl bg-brand-soft py-4 font-semibold text-brand-ink transition hover:bg-[#DDF3E6] active:scale-[0.98]'}>
           다 했어요
         </button>
       )}
@@ -278,10 +278,8 @@ function Action({ r, best }) {
           </div>
         </div>
       )}
-      {state === 'saved' && <p className="enter mt-4 rounded-2xl bg-[#E8F3FF] py-4 text-center font-semibold text-[#1B64DA]">✓ 잘했어요! 기록해 둘게요</p>}
+      {state === 'saved' && <p className="enter mt-4 rounded-2xl bg-brand-soft py-4 text-center font-semibold text-brand-ink">✓ 잘했어요! 기록해 둘게요</p>}
       {err && <p role="alert" className="mt-2 text-sm text-[#E5484D]">{err}</p>}
     </article>
   );
-  // 가장 추천 카드는 그라데이션 테두리로 강조
-  return best ? <div className="rounded-3xl bg-gradient-to-br from-[#3182F6] to-[#8B5CF6] p-[2px] shadow-lg shadow-blue-500/10">{card}</div> : card;
 }

@@ -1,6 +1,7 @@
 // 마음 5분 매트릭스 — 시연 화면 (한 화면에 페르소나 전환 · 7일 차트 · 웹캠 심박 · AI 대화 · 5분 루틴)
 import { useEffect, useRef, useState } from 'react';
 import { FEATURE_EVIDENCE, LEVELS, PERSONAS, ROUTINES } from './content.js';
+import { Logo } from './common.jsx';
 import { EMOTIONS, MIN_DAYS, api, dateKey, estimateBpm, insights, mean, slotOf, slotStats, SLOTS } from './lib.js';
 
 // 차트 색: dataviz 기본 팔레트 1~3번(색약 검사 통과). 3번 청록은 대비 3:1 미만이라 값 라벨·표 보기를 함께 둔다.
@@ -81,14 +82,15 @@ export default function App() {
       <header className="sticky top-0 z-10 border-b border-stone-200 bg-white/90 backdrop-blur">
         <div className="mx-auto flex max-w-7xl flex-wrap items-center gap-3 px-4 py-3">
           <div className="mr-auto">
-            <h1 className="text-lg font-bold">마음 5분 매트릭스</h1>
+            <h1 className="flex items-center gap-2 text-lg font-bold"><Logo size={24} />마음 5분 매트릭스</h1>
             <p className="text-xs text-stone-500">셀프케어 보조 앱 · 의료 서비스가 아니에요</p>
           </div>
+          <a href="/pricing" className="rounded-full px-3 py-1.5 text-sm text-stone-600 hover:bg-stone-100">요금 안내</a>
           <a href="/" className="rounded-full px-3 py-1.5 text-sm text-stone-600 hover:bg-stone-100">마음 체크 →</a>
           <div role="group" aria-label="시연 페르소나 전환" className="flex rounded-full bg-stone-100 p-1 text-sm">
             {Object.values(PERSONAS).map((x) => (
               <button key={x.id} type="button" aria-pressed={p === x.id} onClick={() => setP(x.id)}
-                className={`rounded-full px-4 py-1.5 transition ${p === x.id ? 'bg-stone-900 text-white shadow' : 'text-stone-600 hover:text-stone-900'}`}>
+                className={`rounded-full px-4 py-1.5 transition ${p === x.id ? 'bg-brand-ink text-white shadow' : 'text-stone-600 hover:text-stone-900'}`}>
                 {x.id} · {x.label}
               </button>
             ))}
@@ -105,10 +107,10 @@ export default function App() {
           <div className="mt-2 grid grid-cols-4 gap-2">
             {stats.map((x) => (
               <button key={x.slot} type="button" onClick={() => { setSlot(x.slot); setTab('now'); }}
-                className={`rounded-xl border p-2 text-left ${x.slot === worst ? 'border-stone-900 bg-white' : 'border-stone-200 bg-stone-50'} ${x.slot === slot ? 'ring-2 ring-stone-300' : ''}`}>
-                <div className="flex items-center justify-between text-xs text-stone-500">{x.slot}{x.slot === worst && <span className="font-medium text-stone-900">최저</span>}</div>
+                className={`rounded-xl border p-2 text-left ${x.slot === worst ? 'border-brand-ink bg-white' : 'border-stone-200 bg-stone-50'} ${x.slot === slot ? 'ring-2 ring-brand/40' : ''}`}>
+                <div className="flex items-center justify-between text-xs text-stone-500">{x.slot}{x.slot === worst && <span className="font-medium text-brand-ink">최저</span>}</div>
                 <div className="text-lg font-semibold">{r1(x.mood)}</div>
-                <div className="h-1.5 rounded-full bg-[#cde2fb]"><div className="h-full rounded-full bg-[#2a78d6]" style={{ width: `${(x.mood ?? 0) * 10}%` }} /></div>
+                <div className="h-1.5 rounded-full bg-brand-soft"><div className="h-full rounded-full bg-brand" style={{ width: `${(x.mood ?? 0) * 10}%` }} /></div>
                 <div className="mt-1 text-[11px] leading-tight text-stone-600">{x.top ? <>{x.top}<br />{x.topN}회</> : '기록 적음'}</div>
               </button>
             ))}
@@ -165,7 +167,7 @@ export default function App() {
             <div role="tablist" className="flex gap-1 text-sm">
               {[['now', '지금 추천'], ['table', '감정별 행동표'], ['evidence', '근거 자료']].map(([id, label]) => (
                 <button key={id} type="button" role="tab" aria-selected={tab === id} onClick={() => setTab(id)}
-                  className={`rounded-full px-3 py-1 ${tab === id ? 'bg-stone-900 text-white' : 'text-stone-600 hover:bg-stone-100'}`}>{label}</button>
+                  className={`rounded-full px-3 py-1 ${tab === id ? 'bg-brand-ink text-white' : 'text-stone-600 hover:bg-stone-100'}`}>{label}</button>
               ))}
             </div>
           }>
@@ -174,13 +176,13 @@ export default function App() {
               <div className="flex flex-wrap items-center gap-2">
                 {SLOTS.map((x) => (
                   <button key={x} type="button" onClick={() => setSlot(x)}
-                    className={`rounded-full border px-3 py-1 text-sm ${slot === x ? 'border-stone-900 bg-stone-900 text-white' : 'border-stone-200 hover:bg-stone-100'}`}>
+                    className={`rounded-full border px-3 py-1 text-sm ${slot === x ? 'border-brand-ink bg-brand-ink text-white' : 'border-stone-200 hover:bg-stone-100'}`}>
                     {x}{x === slotOf(new Date()) && <span className="ml-1 text-xs opacity-70">지금</span>}
                   </button>
                 ))}
                 <span className="ml-auto flex items-center gap-1 text-xs text-stone-600" title="한 번이라도 했다면 충분해요">
                   이번 주 작은 행동 {doneWeek.length}번
-                  {weekDays.map((d) => <span key={d} className={`size-2 rounded-full ${doneWeek.some((x) => x.ts.startsWith(d)) ? 'bg-stone-900' : 'bg-stone-200'}`} />)}
+                  {weekDays.map((d) => <span key={d} className={`size-2 rounded-full ${doneWeek.some((x) => x.ts.startsWith(d)) ? 'bg-brand' : 'bg-stone-200'}`} />)}
                 </span>
               </div>
               <p className="mt-2 text-sm text-stone-600">{P.name}님, {reason}</p>
@@ -209,7 +211,7 @@ export default function App() {
                           </div>
                         </div>
                       ) : (
-                        <button type="button" onClick={() => setRating(r.id)} className="mt-2 rounded-xl bg-stone-900 py-2 text-sm text-white hover:bg-stone-700">해봤어요</button>
+                        <button type="button" onClick={() => setRating(r.id)} className="mt-2 rounded-xl bg-brand-ink py-2 text-sm text-white hover:bg-[#006633]">해봤어요</button>
                       )}
                     </article>
                   );
@@ -243,7 +245,7 @@ export default function App() {
             <div className="max-h-[560px] space-y-3 overflow-y-auto pr-1 text-sm">
               <p className="text-xs text-stone-500">각 행동을 고른 이유가 된 연구예요. 이 앱 자체의 효과를 뜻하지 않아요. 등급 — {Object.entries(LEVELS).map(([k, v]) => `${k}: ${v}`).join(' · ')}</p>
               {[...ROUTINES, ...FEATURE_EVIDENCE].map((r) => (
-                <div key={r.id} id={`ev-${r.id}`} className={`rounded-xl border p-3 ${focus === r.id ? 'border-stone-900' : 'border-stone-200'}`}>
+                <div key={r.id} id={`ev-${r.id}`} className={`rounded-xl border p-3 ${focus === r.id ? 'border-brand-ink' : 'border-stone-200'}`}>
                   <div className="flex flex-wrap items-center gap-2">
                     <span className="font-medium">{r.title}</span>
                     {r.level ? <span className="rounded-full bg-stone-100 px-2 py-0.5 text-xs">{r.level}등급</span> : <span className="rounded-full bg-stone-100 px-2 py-0.5 text-xs">기능 근거</span>}
@@ -404,7 +406,7 @@ function Rppg({ baseline, onSave, onEvidence }) {
             {delta >= 10 && <p className="mt-1 text-sm text-stone-700">긴장했거나 카페인 영향일 수 있어요. '박스 호흡'을 해보세요.</p>}
             <p className="mt-1 text-xs text-stone-500">신호 품질 {Math.round(result.quality * 100)}% · 의료용 측정이 아니에요</p>
             <button type="button" disabled={saved} onClick={async () => { await onSave(result.bpm); setSaved(true); }}
-              className="mt-2 w-full rounded-xl bg-stone-900 py-2 text-sm text-white disabled:bg-stone-300">{saved ? '오늘 기록에 저장했어요' : '오늘 기록에 저장'}</button>
+              className="mt-2 w-full rounded-xl bg-brand-ink py-2 text-sm text-white disabled:bg-stone-300">{saved ? '오늘 기록에 저장했어요' : '오늘 기록에 저장'}</button>
           </div>
         ) : <p className="mt-3 text-sm text-stone-700">신호가 약해요(품질 {Math.round((result?.quality ?? 0) * 100)}%). 밝은 곳에서 얼굴을 타원에 맞추고 다시 재 주세요.</p>
       )}
@@ -479,9 +481,9 @@ function Chat({ s, onSent }) {
     <div className="flex flex-col">
       <div ref={box} className="h-80 space-y-2 overflow-y-auto rounded-xl bg-stone-50 p-3 lg:h-96">
         {s.messages.map((m, i) => (
-          <div key={i} className={`max-w-[85%] whitespace-pre-wrap rounded-2xl px-3 py-2 text-sm ${m.role === 'user' ? 'ml-auto bg-stone-900 text-white' : 'bg-white shadow-sm'}`}>{m.content}</div>
+          <div key={i} className={`max-w-[85%] whitespace-pre-wrap rounded-2xl px-3 py-2 text-sm ${m.role === 'user' ? 'ml-auto bg-brand-ink text-white' : 'bg-white shadow-sm'}`}>{m.content}</div>
         ))}
-        {busy && <><div className="ml-auto max-w-[85%] rounded-2xl bg-stone-700 px-3 py-2 text-sm text-white">{text}</div><div className="w-fit rounded-2xl bg-white px-3 py-2 text-sm text-stone-400 shadow-sm">입력 중…</div></>}
+        {busy && <><div className="ml-auto max-w-[85%] rounded-2xl bg-brand-ink px-3 py-2 text-sm text-white">{text}</div><div className="w-fit rounded-2xl bg-white px-3 py-2 text-sm text-stone-400 shadow-sm">입력 중…</div></>}
       </div>
       {chips?.length > 0 && <p className="mt-2 text-xs text-stone-600">대화에서 기록됨: {chips.join(' · ')}</p>}
       {last && last.risk !== 'none' && (
@@ -493,8 +495,8 @@ function Chat({ s, onSent }) {
       {err && <p role="alert" className="mt-2 text-xs text-red-700">{err}</p>}
       <form onSubmit={send} className="mt-2 flex gap-2">
         <input value={text} onChange={(e) => setText(e.target.value)} maxLength={1000} placeholder={`${s.persona.name}님으로 이야기해 보세요`}
-          className="min-w-0 flex-1 rounded-xl border border-stone-300 px-3 py-2 text-sm outline-none focus:border-stone-900" aria-label="메시지" />
-        <button type="submit" disabled={busy || !text.trim()} className="rounded-xl bg-stone-900 px-4 text-sm text-white disabled:bg-stone-300">보내기</button>
+          className="min-w-0 flex-1 rounded-xl border border-stone-300 px-3 py-2 text-sm outline-none focus:border-brand-ink" aria-label="메시지" />
+        <button type="submit" disabled={busy || !text.trim()} className="rounded-xl bg-brand-ink px-4 text-sm text-white disabled:bg-stone-300">보내기</button>
       </form>
     </div>
   );

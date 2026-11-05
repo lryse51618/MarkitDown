@@ -7,7 +7,7 @@ import Anthropic from '@anthropic-ai/sdk';
 import { createServer as createVite } from 'vite';
 import { seed } from './seed.js';
 import { serveStatic } from './static.js';
-import { PERSONAS, PHQ9, ROUTINES } from './src/content.js';
+import { PERSONAS, PHQ9, PLANS, ROUTINES } from './src/content.js';
 import { CRISIS, EMOTIONS, OK, SLOTS, cleanExtract, cleanReco, dateKey, detectRisk, parseAnswers, rulePicks, slotOf, slotStats, stamp } from './src/lib.js';
 
 const PORT = Number(process.env.PORT ?? 5173);
@@ -24,6 +24,7 @@ db.exec(`
   CREATE TABLE IF NOT EXISTS messages (id INTEGER PRIMARY KEY, persona TEXT, ts TEXT, role TEXT, content TEXT);
   CREATE TABLE IF NOT EXISTS done (id INTEGER PRIMARY KEY, persona TEXT, ts TEXT, routine TEXT, after INTEGER);
   CREATE TABLE IF NOT EXISTS surveys (id INTEGER PRIMARY KEY, ts TEXT, answers TEXT, total INTEGER, crisis INTEGER, picks TEXT, source TEXT);
+  CREATE TABLE IF NOT EXISTS interest (id INTEGER PRIMARY KEY, ts TEXT, product TEXT, answer INTEGER);
 `);
 if (!db.prepare('SELECT 1 FROM daily LIMIT 1').get()) seed(db);
 
@@ -226,6 +227,15 @@ const readJson = (req) =>
     req.on('error', reject);
   });
 const isPersona = (p) => p === 'A' || p === 'B';
+// 지불 의향 응답 집계 (출시 전 가격 검증용). shortcut: 같은 사람의 중복 응답을 막지 않음, 실제 조사 땐 로그인/기기 기준으로 막기
+const POLL = PLANS.products.filter((p) => p.poll).map((p) => p.id);
+function interestCounts() {
+  const out = Object.fromEntries(POLL.map((p) => [p, [0, 0, 0]]));
+  for (const { product, answer, n } of q('SELECT product, answer, count(*) AS n FROM interest GROUP BY product, answer').all()) {
+    if (out[product]) out[product][answer] = n;
+  }
+  return out;
+}
 
 async function api(req, res) {
   const url = new URL(req.url, 'http://localhost');
@@ -234,12 +244,18 @@ async function api(req, res) {
       const p = url.searchParams.get('p');
       return isPersona(p) ? send(res, 200, state(p)) : send(res, 400, { error: '페르소나는 A 또는 B예요' });
     }
+    if (req.method === 'GET' && url.pathname === '/api/interest') return send(res, 200, interestCounts());
     if (req.method !== 'POST') return send(res, 404, { error: '없는 주소예요' });
     const body = await readJson(req);
     if (url.pathname === '/api/survey') {
       const answers = parseAnswers(body.answers);
       if (!answers) return send(res, 400, { error: '9개 문항에 모두 0~3점으로 답해 주세요' });
       return send(res, 200, await recommend(answers));
+    }
+    if (url.pathname === '/api/interest') {
+      if (!POLL.includes(body.product) || ![0, 1, 2].includes(body.answer)) return send(res, 400, { error: '잘못된 응답이에요' });
+      q('INSERT INTO interest (ts, product, answer) VALUES (?, ?, ?)').run(stamp(new Date()), body.product, body.answer);
+      return send(res, 200, { counts: interestCounts()[body.product] });
     }
     // U = 설문 화면의 익명 사용자 (루틴 완료 기록만 남긴다)
     if (!isPersona(body.p) && !(body.p === 'U' && url.pathname === '/api/done')) return send(res, 400, { error: '페르소나는 A 또는 B예요' });

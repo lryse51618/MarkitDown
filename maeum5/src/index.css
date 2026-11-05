@@ -1,6 +1,11 @@
 @import "tailwindcss";
 
 @theme {
+  --color-brand: #03C75A;        /* 네이버풍 초록: 로고·진행 바·강조 (흰 글자 배경으로는 쓰지 않음, 대비 2.3:1) */
+  --color-brand-strong: #00A344; /* 큰 굵은 글씨 버튼 배경 (흰 글자 대비 3.3:1) */
+  --color-brand-deep: #008F3B;   /* 위 버튼의 누름·호버 */
+  --color-brand-ink: #007A3D;    /* 작은 흰 글자 배경·옅은 배경 위 초록 글자 (대비 5:1 이상) */
+  --color-brand-soft: #E9F8EF;   /* 옅은 초록 배경 */
   --font-sans: "Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont, system-ui, "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
 }
 
