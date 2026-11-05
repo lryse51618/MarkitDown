@@ -7,8 +7,8 @@ import Anthropic from '@anthropic-ai/sdk';
 import { createServer as createVite } from 'vite';
 import { seed } from './seed.js';
 import { serveStatic } from './static.js';
-import { PERSONAS, PHQ9, PLANS, ROUTINES } from './src/content.js';
-import { CRISIS, EMOTIONS, OK, SLOTS, cleanExtract, cleanReco, dateKey, detectRisk, parseAnswers, rulePicks, slotOf, slotStats, stamp } from './src/lib.js';
+import { PERSONAS, PHQ9, PLACES, PLANS, ROUTINES } from './src/content.js';
+import { CRISIS, EMOTIONS, OK, SLOTS, cleanExtract, cleanReco, cleanVent, dateKey, detectRisk, parseAnswers, rulePicks, slotOf, slotStats, stamp, togetherStats } from './src/lib.js';
 
 const PORT = Number(process.env.PORT ?? 5173);
 const PROD = process.argv.includes('--prod');
@@ -25,6 +25,7 @@ db.exec(`
   CREATE TABLE IF NOT EXISTS done (id INTEGER PRIMARY KEY, persona TEXT, ts TEXT, routine TEXT, after INTEGER);
   CREATE TABLE IF NOT EXISTS surveys (id INTEGER PRIMARY KEY, ts TEXT, answers TEXT, total INTEGER, crisis INTEGER, picks TEXT, source TEXT);
   CREATE TABLE IF NOT EXISTS interest (id INTEGER PRIMARY KEY, ts TEXT, product TEXT, answer INTEGER);
+  CREATE TABLE IF NOT EXISTS vents (id INTEGER PRIMARY KEY, ts TEXT, emotion TEXT, crisis INTEGER); -- 털어놓은 글 원문은 저장하지 않는다
 `);
 if (!db.prepare('SELECT 1 FROM daily LIMIT 1').get()) seed(db);
 
@@ -204,6 +205,58 @@ async function recommend(answers) {
   return { id: Number(lastInsertRowid), total, crisis, message, picks: reco.picks, source };
 }
 
+// 감정 쓰레기통: 털어놓은 글 → 감정 이름 · PHQ-9 영역 신호(진단 아님) · 받아 주는 말. 글 원문은 어디에도 저장하지 않는다.
+const PHQ_KEYS = PHQ9.items.map((it) => it.key);
+const PLACE_IDS = PLACES.map((p) => p.id);
+const VENT_SYSTEM = `너는 '마음 5분'의 감정 쓰레기통이야. 사용자가 오늘 있었던 일과 감정을 1분 동안 자유롭게 털어놓은 글을 받아. 의료 서비스가 아니야.
+- reply: 판단하거나 조언하지 말고, 털어놓은 마음을 그대로 받아 주는 말 2문장(100자 이내). 존댓말. 진단명·약·'처방'·'치료'·'증상'·'우울증' 같은 의료 표현은 쓰지 마.
+- emotion: 글에서 가장 크게 드러난 감정 하나 (무기력·우울 / 불안·과부하 / 분노·울분 / 고독·소외감 / 괜찮음)
+- place: 글에 지금 있는 곳이 드러나면 bed(침대 위)·desk(학교·일터)·move(이동 중)·home(방 안·집), 없으면 null
+- signals: PHQ-9의 9개 영역이 글에 드러난 정도. 0=글에 없음, 1=조금, 2=뚜렷함, 3=매우 강함. 글에 없는 건 추측하지 말고 0으로 둬. 점수가 아니라 신호야.
+  interest 흥미·즐거움 저하 / mood 가라앉은 기분 / sleep 잠 문제 / energy 피로·기운 없음 / appetite 식욕 변화 / self 자기 비난 / focus 집중 어려움 / motor 느려짐·안절부절 / harm 자해 생각
+- risk: none / watch(간접적인 위험 신호) / urgent(자신을 해치거나 삶을 끝내려는 생각이나 계획)`;
+const VENT_SCHEMA = {
+  type: 'object',
+  properties: {
+    reply: { type: 'string' },
+    emotion: { type: 'string', enum: [...EMOTIONS, OK] },
+    place: nullable({ type: 'string', enum: PLACE_IDS }),
+    signals: { type: 'object', properties: Object.fromEntries(PHQ_KEYS.map((k) => [k, { type: 'integer', enum: [0, 1, 2, 3] }])), required: PHQ_KEYS, additionalProperties: false },
+    risk: { type: 'string', enum: ['none', 'watch', 'urgent'] },
+  },
+  required: ['reply', 'emotion', 'place', 'signals', 'risk'],
+  additionalProperties: false,
+};
+const ventsToday = (now) => q('SELECT count(*) AS n FROM vents WHERE ts >= ?').get(dateKey(now)).n;
+
+async function vent(text) {
+  const now = new Date();
+  const empty = { emotion: null, place: null, signals: Object.fromEntries(PHQ_KEYS.map((k) => [k, 0])) };
+  if (detectRisk(text)) {
+    q('INSERT INTO vents (ts, emotion, crisis) VALUES (?, ?, 1)').run(stamp(now), null);
+    return { ...empty, reply: CRISIS, crisis: true, today: ventsToday(now) };
+  }
+  if (!withinQuota(now)) throw new Error(`오늘 AI 한도(${MAX_CHATS_PER_DAY}번)를 넘었어요. 감정을 직접 골라 주세요`);
+  client ??= new Anthropic();
+  const res = await client.beta.messages.create({
+    model: MODEL,
+    max_tokens: 16000,
+    betas: ['server-side-fallback-2026-07-01'],
+    fallbacks: 'default',
+    cache_control: { type: 'ephemeral' },
+    output_config: { effort: 'low', format: { type: 'json_schema', schema: VENT_SCHEMA } },
+    system: VENT_SYSTEM,
+    messages: [{ role: 'user', content: text }],
+  }, { timeout: 30_000, maxRetries: 1 });
+  const u = res.usage;
+  console.log(`[vent] ${res.model} in=${u.input_tokens} cache_read=${u.cache_read_input_tokens ?? 0} out=${u.output_tokens}`);
+  if (res.stop_reason === 'refusal') throw new Error('지금은 이 글을 읽기 어려워요. 감정을 직접 골라 주세요');
+  const data = cleanVent(JSON.parse(res.content.find((b) => b.type === 'text')?.text ?? '{}'), PHQ_KEYS, PLACE_IDS);
+  const crisis = data.risk !== 'none' || data.signals.harm > 0;
+  q('INSERT INTO vents (ts, emotion, crisis) VALUES (?, ?, ?)').run(stamp(now), data.emotion, crisis ? 1 : 0);
+  return { ...data, reply: data.reply ?? '털어놓아 줘서 고마워요. 마음이 조금 가벼워졌길 바라요.', crisis, today: ventsToday(now) };
+}
+
 const explain = (e) =>
   e instanceof Anthropic.AuthenticationError ? 'Claude API 키가 올바르지 않아요 (.env 확인)'
   : e instanceof Anthropic.RateLimitError ? '요청이 많아요. 잠시 후 다시 보내 주세요'
@@ -252,6 +305,11 @@ async function api(req, res) {
       if (!answers) return send(res, 400, { error: '9개 문항에 모두 0~3점으로 답해 주세요' });
       return send(res, 200, await recommend(answers));
     }
+    if (url.pathname === '/api/vent') {
+      const text = typeof body.text === 'string' ? body.text.trim() : '';
+      if (!text || text.length > 2000) return send(res, 400, { error: '1~2000자로 털어놓아 주세요' });
+      return send(res, 200, await vent(text));
+    }
     if (url.pathname === '/api/interest') {
       if (!POLL.includes(body.product) || ![0, 1, 2].includes(body.answer)) return send(res, 400, { error: '잘못된 응답이에요' });
       q('INSERT INTO interest (ts, product, answer) VALUES (?, ?, ?)').run(stamp(new Date()), body.product, body.answer);
@@ -273,8 +331,12 @@ async function api(req, res) {
     }
     if (url.pathname === '/api/done') {
       if (!ROUTINES.some((r) => r.id === body.routine) || ![0, 1, 2].includes(body.after)) return send(res, 400, { error: '잘못된 기록이에요' });
-      q('INSERT INTO done (persona, ts, routine, after) VALUES (?, ?, ?, ?)').run(body.p, stamp(now), body.routine, body.after);
-      return send(res, 200, { ok: true });
+      // 같은 기기가 같은 시간대에 같은 행동을 또 하면(again) 한 사람으로 세려고 다시 넣지 않는다
+      if (!(body.p === 'U' && body.again === true)) q('INSERT INTO done (persona, ts, routine, after) VALUES (?, ?, ?, ?)').run(body.p, stamp(now), body.routine, body.after);
+      if (body.p !== 'U') return send(res, 200, { ok: true });
+      // 느슨한 연대: 실제 익명 이용자(U) 기록만 센다. 시연용 페르소나 데이터는 넣지 않는다
+      const rows = q('SELECT ts, after FROM done WHERE persona = ? AND routine = ? AND ts >= ?').all('U', body.routine, stamp(new Date(now - 12 * 36e5)));
+      return send(res, 200, { ok: true, together: togetherStats(rows, now) });
     }
     send(res, 404, { error: '없는 주소예요' });
   } catch (e) {

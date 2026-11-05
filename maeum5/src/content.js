@@ -54,6 +54,8 @@ const R = {
   drake: ['Drake, C., Roehrs, T., Shambroom, J., & Roth, T. (2013). Caffeine effects on sleep taken 0, 3, or 6 hours before going to bed. Journal of Clinical Sleep Medicine, 9(11), 1195–1200.', '잠들기 6시간 전에 마신 카페인 400mg도 총수면을 1시간 넘게 줄임 (실험).'],
   kroenke: ['Kroenke, K., Spitzer, R. L., & Williams, J. B. W. (2001). The PHQ-9: Validity of a brief depression severity measure. Journal of General Internal Medicine, 16(9), 606–613.', '9문항 점수가 우울감의 정도와 잘 맞고, 5·10·15·20점이 정도를 나누는 기준으로 쓰임 (타당도 연구).'],
   harkin: ['Harkin, B., Webb, T. L., Chang, B. P. I., Prestwich, A., Conner, M., Kellar, I., Benn, Y., & Sheeran, P. (2016). Does monitoring goal progress promote goal attainment? A meta-analysis of the experimental evidence. Psychological Bulletin, 142(2), 198–229.', '목표 진행을 기록하고 확인하게 하면 목표 달성이 높아지고, 눈에 보이게 기록할 때 효과가 더 컸음 (메타분석).'],
+  frattaroli: ['Frattaroli, J. (2006). Experimental disclosure and its moderators: A meta-analysis. Psychological Bulletin, 132(6), 823–865.', '감정과 경험을 글로 털어놓는 실험(표현적 글쓰기)은 작지만 긍정적인 효과가 있었음 (메타분석).'],
+  sandstrom: ['Sandstrom, G. M., & Dunn, E. W. (2014). Social interactions and well-being: The surprising power of weak ties. Personality and Social Psychology Bulletin, 40(7), 910–922.', '가벼운 사이(약한 유대)와 마주친 날일수록 소속감과 기분이 더 좋았음 (연구).'],
   park: ['Park, S.-J., Choi, H.-R., Choi, J.-H., Kim, K.-W., & Hong, J.-P. (2010). Reliability and validity of the Korean version of the Patient Health Questionnaire-9 (PHQ-9). Anxiety and Mood, 6(2), 119–124.', '한국어판 PHQ-9의 신뢰도와 타당도를 확인한 연구.'],
 };
 const refs = (...keys) => keys.map((k) => ({ cite: R[k][0], finding: R[k][1] }));
@@ -135,6 +137,8 @@ export const ROUTINES = [
 ];
 
 export const FEATURE_EVIDENCE = [
+  { id: 'vent', title: '감정 쓰레기통', use: '1분 동안 털어놓은 글에서 감정에 이름을 붙이고, 바로 각성을 낮추는 5분 행동으로 이어줘요. 글은 저장하지 않고 버려요.', limit: '화를 쏟아내기만 하면 오히려 커질 수 있어서(Bushman, 2002) 털어놓기에서 끝내지 않아요. AI가 읽은 신호는 진단이나 점수가 아니에요.', refs: refs('frattaroli', 'lieberman', 'bushman') },
+  { id: 'together', title: '느슨한 연대', use: '같은 시간대에 같은 5분 행동을 한 실제 익명 이용자 수를 보여줘요. 숫자를 지어내지 않아요.', limit: '5명 미만이면 나아진 사람 수는 보여주지 않아요.', refs: refs('sandstrom') },
   { id: 'garden', title: '마음 정원', use: '해본 5분 행동을 잎으로 쌓아 눈으로 보여줘요. 잎 색은 그때의 감정, 크기는 해보고 나아진 정도예요.', limit: '기록을 보여주는 장치이지 효과를 보장하지 않아요.', refs: refs('harkin') },
   { id: 'promise', title: '나와의 약속', use: '"그 시간이 오면 → 이 5분 행동"을 미리 정해 두고, 그 시간에 앱을 열면 먼저 보여줘요.', limit: '웹에서는 앱을 열 때만 보여요. 앱 출시 때 알림으로 바꿔요.', refs: refs('gollwitzer') },
   { id: 'phq9', title: 'PHQ-9 마음 체크', use: '지난 2주의 마음 상태를 9문항으로 스스로 점검하고, 점수 구간은 표준 기준을 따라요.', limit: '진단이 아니에요. 10점 이상이면 전문가와 이야기해 보길 권하는 기준으로만 써요.', refs: refs('kroenke', 'park') },
@@ -150,15 +154,15 @@ export const PHQ9 = {
   prompt: '지난 2주일 동안 당신은 다음의 문제들로 인해서 얼마나 자주 방해를 받았습니까?',
   options: ['전혀 방해 받지 않았다', '며칠 동안 방해 받았다', '7일 이상 방해 받았다', '거의 매일 방해 받았다'],
   items: [
-    { text: '일 또는 여가 활동을 하는 데 흥미나 즐거움을 느끼지 못함', short: '흥미·즐거움 저하', routines: ['walk', 'toes'] },
-    { text: '기분이 가라앉거나, 우울하거나, 희망이 없음', short: '가라앉은 기분', routines: ['kind', 'reread'] },
-    { text: '잠이 들거나 계속 잠을 자는 것이 어려움, 또는 잠을 너무 많이 잠', short: '잠 문제', routines: ['todo', 'sigh'] },
-    { text: '피곤하다고 느끼거나 기운이 거의 없음', short: '피로·기운 없음', routines: ['toes', 'walk'] },
-    { text: '입맛이 없거나 과식을 함', short: '식욕 변화', routines: ['label', 'walk'] },
-    { text: '자신을 부정적으로 봄 - 혹은 자신이 실패자라고 느끼거나 자신 또는 가족을 실망시킴', short: '자기 비난', routines: ['kind', 'hello'] },
-    { text: '신문을 읽거나 텔레비전 보는 것과 같은 일에 집중하는 것이 어려움', short: '집중 어려움', routines: ['box', 'sigh'] },
-    { text: '다른 사람들이 주목할 정도로 너무 느리게 움직이거나 말을 함. 또는 반대로 평상시보다 많이 움직여서, 너무 안절부절 못하거나 들떠 있음', short: '느려짐·안절부절', routines: ['sigh', 'step'] },
-    { text: '자신이 죽는 것이 더 낫다고 생각하거나 어떤 식으로든 자신을 해칠 것이라고 생각함', short: '자해 생각', routines: ['sigh', 'label'] },
+    { text: '일 또는 여가 활동을 하는 데 흥미나 즐거움을 느끼지 못함', short: '흥미·즐거움 저하', key: 'interest', routines: ['walk', 'toes'] },
+    { text: '기분이 가라앉거나, 우울하거나, 희망이 없음', short: '가라앉은 기분', key: 'mood', routines: ['kind', 'reread'] },
+    { text: '잠이 들거나 계속 잠을 자는 것이 어려움, 또는 잠을 너무 많이 잠', short: '잠 문제', key: 'sleep', routines: ['todo', 'sigh'] },
+    { text: '피곤하다고 느끼거나 기운이 거의 없음', short: '피로·기운 없음', key: 'energy', routines: ['toes', 'walk'] },
+    { text: '입맛이 없거나 과식을 함', short: '식욕 변화', key: 'appetite', routines: ['label', 'walk'] },
+    { text: '자신을 부정적으로 봄 - 혹은 자신이 실패자라고 느끼거나 자신 또는 가족을 실망시킴', short: '자기 비난', key: 'self', routines: ['kind', 'hello'] },
+    { text: '신문을 읽거나 텔레비전 보는 것과 같은 일에 집중하는 것이 어려움', short: '집중 어려움', key: 'focus', routines: ['box', 'sigh'] },
+    { text: '다른 사람들이 주목할 정도로 너무 느리게 움직이거나 말을 함. 또는 반대로 평상시보다 많이 움직여서, 너무 안절부절 못하거나 들떠 있음', short: '느려짐·안절부절', key: 'motor', routines: ['sigh', 'step'] },
+    { text: '자신이 죽는 것이 더 낫다고 생각하거나 어떤 식으로든 자신을 해칠 것이라고 생각함', short: '자해 생각', key: 'harm', routines: ['sigh', 'label'] },
   ],
   // 구간은 PHQ-9 표준 기준(0–4, 5–9, 10–14, 15–19, 20–27). 문구는 판정이 아니라 안내로 쓴다.
   levels: [

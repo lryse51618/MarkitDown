@@ -181,3 +181,34 @@ export function gardenStats(leaves) {
   const best = Object.values(per).filter((x) => x.n >= 2).sort((a, b) => b.better / b.n - a.better / a.n || b.n - a.n).slice(0, 3);
   return { n: leaves.length, better: leaves.filter((l) => l.after > 0).length, by, days: new Set(leaves.map((l) => l.ts.slice(0, 10))).size, best };
 }
+
+// 감정 쓰레기통: 모델 출력 정리(신뢰 경계). 신호는 PHQ-9 9개 영역에 0~3, 없는 값은 0. 의료 표현이 섞인 답은 버린다.
+export function cleanVent(o, keys, placeIds) {
+  const reply = typeof o?.reply === 'string' ? o.reply.trim().slice(0, 300) : '';
+  return {
+    reply: reply && !MEDICAL.test(reply) ? reply : null,
+    emotion: [...EMOTIONS, OK].includes(o?.emotion) ? o.emotion : null,
+    place: placeIds.includes(o?.place) ? o.place : null,
+    signals: Object.fromEntries(keys.map((k) => [k, [0, 1, 2, 3].includes(o?.signals?.[k]) ? o.signals[k] : 0])),
+    risk: ['none', 'watch', 'urgent'].includes(o?.risk) ? o.risk : 'none',
+  };
+}
+
+// 최근 14일 털어놓은 글에서 같은 영역 신호(2 이상)가 3번 이상이면 9문항 점검을 권한다. 자해 생각은 위기 안내가 따로 맡는다.
+export function ventNudge(vents, now, items) {
+  const from = now - 14 * 864e5;
+  const recent = vents.filter((v) => new Date(v.ts) >= from);
+  const hits = items.filter((it) => it.key !== 'harm').map((it) => ({ ...it, n: recent.filter((v) => (v.signals?.[it.key] ?? 0) >= 2).length }));
+  return hits.filter((h) => h.n >= 3).sort((a, b) => b.n - a.n)[0] ?? null;
+}
+
+// 느슨한 연대: 최근 12시간 중 지금과 같은 시간대에 같은 행동을 한 실제 기록만 센다(어제 같은 시간대는 빠짐)
+export function togetherStats(rows, now) {
+  const slot = slotOf(now);
+  const same = rows.filter((r) => now - new Date(r.ts) <= 12 * 36e5 && slotOf(new Date(r.ts)) === slot);
+  return { n: same.length, better: same.filter((r) => r.after > 0).length, slot };
+}
+export function togetherText({ n, better, slot }, title) {
+  if (n <= 1) return `오늘 ${slot}, ‘${title}’ 첫 번째는 나예요. 다음에 올 누군가와 이어질 거예요.`;
+  return `오늘 ${slot}, 나까지 ${n}명이 ‘${title}’ 했어요.` + (n >= 5 ? ` 그중 ${better}명은 조금이라도 나아졌어요.` : '');
+}

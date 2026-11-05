@@ -2,7 +2,7 @@
 import { useRef, useState } from 'react';
 import { PHQ9, PLANS, ROUTINES } from './content.js';
 import { api, phqLevel, stamp } from './lib.js';
-import { Action, CTA, Logo, PlanCard, loadMe, saveMe } from './common.jsx';
+import { Action, CTA, Crisis, Logo, PlanCard, loadMe, saveMe } from './common.jsx';
 
 const remember = (fn) => saveMe(fn(loadMe())); // 이 기기에만
 
@@ -208,20 +208,6 @@ function Meter({ total }) {
         {[0, 5, 10, 15, 20, 27].map((v) => <span key={v} className="absolute -translate-x-1/2" style={{ left: `${(v / 27) * 100}%` }}>{v}</span>)}
       </div>
     </div>
-  );
-}
-
-function Crisis({ message }) {
-  return (
-    <section role="alert" className="rounded-3xl bg-[#FFF0F0] p-6 ring-1 ring-[#FFD4D4]">
-      <p className="text-[19px] font-bold text-[#C62828]">혼자 견디지 않아도 돼요</p>
-      <p className="mt-2 text-[15px] leading-relaxed text-[#5B2525]">{message}</p>
-      <div className="mt-4 grid gap-2">
-        <a href="tel:109" className="rounded-2xl bg-[#D93B3B] py-4 text-center text-[19px] font-bold text-white transition active:scale-[0.98]">109 자살예방상담 (24시간)</a>
-        <a href="tel:15770199" className="rounded-2xl bg-white py-4 text-center font-semibold text-[#C62828] ring-1 ring-[#FFD4D4] transition active:scale-[0.98]">1577-0199 정신건강위기상담</a>
-      </div>
-      <p className="mt-3 text-sm text-[#7A3B3B]">위험이 급하다면 112 또는 119에 바로 연락해 주세요.</p>
-    </section>
   );
 }
 

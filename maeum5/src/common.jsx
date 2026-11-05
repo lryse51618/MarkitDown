@@ -1,7 +1,7 @@
 // 여러 화면이 같이 쓰는 조각: 로고, 지불 의향 버튼, 요금 카드
 import { useState } from 'react';
 import { INTEREST, LEVELS } from './content.js';
-import { api } from './lib.js';
+import { api, togetherStats, togetherText } from './lib.js';
 
 // 로고는 public/favicon.svg 한 곳에만 그린다 (새싹 = 작은 행동으로 자라는 마음)
 export const Logo = ({ size = 28 }) => <img src="/favicon.svg" width={size} height={size} alt="" className="shrink-0" />;
@@ -72,9 +72,9 @@ export function PlanCard({ plan, compact = false, children }) {
   );
 }
 
-// 내 기록은 로그인 없이 이 기기(localStorage)에만 둔다: 지금 체크, 정원의 잎, 나와의 약속, 2주 점검 점수
+// 내 기록은 로그인 없이 이 기기(localStorage)에만 둔다: 지금 체크, 정원의 잎, 나와의 약속, 2주 점검 점수, 털어놓은 글에서 읽힌 신호(글 원문은 없음)
 const KEY = 'maeum5:me';
-const EMPTY = { checks: [], leaves: [], promises: [], phq: [] };
+const EMPTY = { checks: [], leaves: [], promises: [], phq: [], vents: [] };
 export function loadMe() {
   try {
     return { ...EMPTY, ...JSON.parse(localStorage.getItem(KEY) ?? '{}') };
@@ -98,15 +98,23 @@ export function Action({ r, best = false, onDone }) {
   const [state, setState] = useState('idle'); // idle → rate → saved
   const [open, setOpen] = useState(false);
   const [err, setErr] = useState('');
-  const save = (after) => {
+  const [together, setTogether] = useState('');
+  const save = async (after) => {
+    const now = new Date();
+    const again = togetherStats(loadMe().leaves.filter((l) => l.routine === r.id), now).n > 0; // 이 기기는 이번 시간대에 이미 세어졌다
     onDone?.(after); // 정원의 잎은 서버 응답과 상관없이 이 기기에 남긴다
     setState('saved');
-    api('/api/done', { p: 'U', routine: r.id, after }).catch((e) => setErr(e.message));
+    try {
+      const res = await api('/api/done', { p: 'U', routine: r.id, after, again });
+      if (res.together) setTogether(togetherText(res.together, r.title)); // 시간대 이름은 센 쪽(서버) 기준
+    } catch (e) {
+      setErr(e.message);
+    }
   };
   return (
     <article className={`rounded-3xl bg-white p-6 ${best ? 'shadow-lg shadow-brand/10 ring-2 ring-brand' : ''}`}>
       <div className="flex items-center gap-2 text-sm">
-        {best && <span className="rounded-full bg-brand-soft px-2.5 py-1 font-semibold text-brand-ink">가장 추천</span>}
+        {best && <span className="shrink-0 rounded-full bg-brand-soft px-2.5 py-1 font-semibold text-brand-ink">가장 추천</span>}
         <span className="min-w-0 truncate text-[#8B95A1]">{r.situation}</span>
         <span className="ml-auto shrink-0 rounded-full bg-[#F2F4F6] px-2.5 py-1 font-semibold text-[#4E5968]">{r.minutes}분</span>
       </div>
@@ -152,7 +160,30 @@ export function Action({ r, best = false, onDone }) {
         </div>
       )}
       {state === 'saved' && <p className="enter mt-4 rounded-2xl bg-brand-soft py-4 text-center font-semibold text-brand-ink">✓ 잘했어요! 정원에 잎이 하나 났어요</p>}
+      {together && (
+        <p role="status" className="enter mt-2 flex items-center gap-3 rounded-2xl bg-[#F9FAFB] px-4 py-3 text-sm leading-relaxed text-[#4E5968]">
+          <span className="flex shrink-0 -space-x-1.5" aria-hidden="true">
+            {['#B7E4C7', '#74C69D', '#40916C'].map((c) => <span key={c} className="size-4 rounded-full ring-2 ring-[#F9FAFB]" style={{ background: c }} />)}
+          </span>
+          {together}
+        </p>
+      )}
       {err && <p role="alert" className="mt-2 text-sm text-[#E5484D]">{err}</p>}
     </article>
+  );
+}
+
+// 위기 안내: 2주 점검과 감정 쓰레기통이 같이 쓴다
+export function Crisis({ message }) {
+  return (
+    <section role="alert" className="rounded-3xl bg-[#FFF0F0] p-6 ring-1 ring-[#FFD4D4]">
+      <p className="text-[19px] font-bold text-[#C62828]">혼자 견디지 않아도 돼요</p>
+      <p className="mt-2 text-[15px] leading-relaxed text-[#5B2525]">{message}</p>
+      <div className="mt-4 grid gap-2">
+        <a href="tel:109" className="rounded-2xl bg-[#D93B3B] py-4 text-center text-[19px] font-bold text-white transition active:scale-[0.98]">109 자살예방상담 (24시간)</a>
+        <a href="tel:15770199" className="rounded-2xl bg-white py-4 text-center font-semibold text-[#C62828] ring-1 ring-[#FFD4D4] transition active:scale-[0.98]">1577-0199 정신건강위기상담</a>
+      </div>
+      <p className="mt-3 text-sm text-[#7A3B3B]">위험이 급하다면 112 또는 119에 바로 연락해 주세요.</p>
+    </section>
   );
 }
