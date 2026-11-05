@@ -1,10 +1,11 @@
-// 2주 마음 점검(/phq9) — PHQ-9 카드형 설문 → 점수 카드 + 5분 행동 추천. 결과와 해본 행동은 홈의 마음 정원에도 남긴다
+// 마음 체크 — PHQ-9 카드형 설문 → 점수 카드 + 5분 행동 추천 (메인 화면). 페르소나 시연 대시보드는 /demo, 요금 안내는 /pricing
 import { useRef, useState } from 'react';
 import { PHQ9, PLANS, ROUTINES } from './content.js';
-import { api, phqLevel, stamp } from './lib.js';
-import { Action, CTA, Crisis, Logo, PlanCard, loadMe, saveMe } from './common.jsx';
+import { api, phqLevel } from './lib.js';
+import { Logo, PlanCard } from './common.jsx';
 
-const remember = (fn) => saveMe(fn(loadMe())); // 이 기기에만
+const AFTER = ['그대로예요', '조금 나아졌어요', '많이 나아졌어요'];
+const CTA = 'rounded-2xl bg-brand-strong text-[19px] font-bold text-white transition hover:bg-brand-deep active:scale-[0.98]'; // 흰 글자는 19px 굵게(큰 글씨 대비 기준)
 
 export default function Survey() {
   const [step, setStep] = useState(-1); // -1 소개, 0~8 문항, 9 결과
@@ -18,9 +19,7 @@ export default function Survey() {
     sending.current = true;
     setErr('');
     try {
-      const res = await api('/api/survey', { answers: a });
-      setResult(res);
-      remember((me) => ({ ...me, phq: [...me.phq, { ts: stamp(new Date()), total: res.total }].slice(-26) }));
+      setResult(await api('/api/survey', { answers: a }));
     } catch (e) {
       setErr(e.message);
     } finally {
@@ -68,8 +67,9 @@ function Intro({ onStart }) {
   return (
     <div className="flex min-h-dvh flex-col bg-[radial-gradient(120%_60%_at_50%_100%,#d6f5e3_0%,#eefbf3_40%,#ffffff_75%)]">
       <header className="mx-auto flex w-full max-w-md items-center gap-2 px-6 pt-5 text-sm">
-        <a href="/" className="flex items-center gap-2 font-bold text-[#191F28]"><Logo size={24} />마음 5분</a>
-        <a href="/" className="ml-auto text-[#8B95A1] hover:text-[#333D4B]">홈으로</a>
+        <span className="flex items-center gap-2 font-bold text-[#191F28]"><Logo size={24} />마음 5분</span>
+        <a href="/pricing" className="ml-auto text-[#8B95A1] hover:text-[#333D4B]">요금 안내</a>
+        <a href="/demo" className="ml-3 text-[#8B95A1] hover:text-[#333D4B]">시연 대시보드</a>
       </header>
       <main className="enter mx-auto flex w-full max-w-md flex-1 flex-col items-center justify-center px-6 text-center">
         <Logo size={72} />
@@ -167,10 +167,7 @@ function Result({ result, answers, onRestart }) {
             {result.source === 'claude' ? 'Claude가 응답을 보고 근거 있는 행동 목록에서 골랐어요.' : '응답에 맞춰 근거 있는 행동 목록에서 골랐어요.'}
           </p>
           <div className="mt-3 space-y-3">
-            {picks.map((r, i) => (
-              <Action key={r.id} r={r} best={i === 0}
-                onDone={(after) => remember((me) => ({ ...me, leaves: [...me.leaves, { ts: stamp(new Date()), emotion: null, routine: r.id, after }].slice(-300) }))} />
-            ))}
+            {picks.map((r, i) => <Action key={r.id} r={r} best={i === 0} />)}
           </div>
         </section>
 
@@ -186,10 +183,9 @@ function Result({ result, answers, onRestart }) {
           </section>
         )}
 
-        <div className="grid grid-cols-2 gap-2">
-          <button type="button" onClick={onRestart} className="rounded-2xl bg-white py-4 text-[16px] font-semibold text-[#333D4B] transition hover:bg-[#E5E8EB] active:scale-[0.98]">다시 점검하기</button>
-          <a href="/" className="rounded-2xl bg-white py-4 text-center text-[16px] font-semibold text-[#333D4B] transition hover:bg-[#E5E8EB] active:scale-[0.98]">홈으로</a>
-        </div>
+        <button type="button" onClick={onRestart} className="w-full rounded-2xl bg-white py-4 text-[16px] font-semibold text-[#333D4B] transition hover:bg-[#E5E8EB] active:scale-[0.98]">
+          다시 체크하기
+        </button>
         <p className="px-2 pt-2 text-center text-xs leading-relaxed text-[#8B95A1]">
           마음 5분 매트릭스는 의료 서비스가 아닌 셀프케어 보조 앱이에요. <a href="/demo" className="underline">시연 대시보드</a>
         </p>
@@ -211,6 +207,20 @@ function Meter({ total }) {
   );
 }
 
+function Crisis({ message }) {
+  return (
+    <section role="alert" className="rounded-3xl bg-[#FFF0F0] p-6 ring-1 ring-[#FFD4D4]">
+      <p className="text-[19px] font-bold text-[#C62828]">혼자 견디지 않아도 돼요</p>
+      <p className="mt-2 text-[15px] leading-relaxed text-[#5B2525]">{message}</p>
+      <div className="mt-4 grid gap-2">
+        <a href="tel:109" className="rounded-2xl bg-[#D93B3B] py-4 text-center text-[19px] font-bold text-white transition active:scale-[0.98]">109 자살예방상담 (24시간)</a>
+        <a href="tel:15770199" className="rounded-2xl bg-white py-4 text-center font-semibold text-[#C62828] ring-1 ring-[#FFD4D4] transition active:scale-[0.98]">1577-0199 정신건강위기상담</a>
+      </div>
+      <p className="mt-3 text-sm text-[#7A3B3B]">위험이 급하다면 112 또는 119에 바로 연락해 주세요.</p>
+    </section>
+  );
+}
+
 function Expert() {
   return (
     <section className="rounded-3xl bg-white p-6">
@@ -224,3 +234,52 @@ function Expert() {
   );
 }
 
+function Action({ r, best }) {
+  const [state, setState] = useState('idle'); // idle → rate → saved
+  const [err, setErr] = useState('');
+  const save = async (after) => {
+    try {
+      await api('/api/done', { p: 'U', routine: r.id, after });
+      setState('saved');
+    } catch (e) {
+      setErr(e.message);
+    }
+  };
+  return (
+    <article className={`rounded-3xl bg-white p-6 ${best ? 'shadow-lg shadow-brand/10 ring-2 ring-brand' : ''}`}>
+      <div className="flex items-center gap-2 text-sm">
+        {best && <span className="rounded-full bg-brand-soft px-2.5 py-1 font-semibold text-brand-ink">가장 추천</span>}
+        <span className="min-w-0 truncate text-[#8B95A1]">{r.situation}</span>
+        <span className="ml-auto shrink-0 rounded-full bg-[#F2F4F6] px-2.5 py-1 font-semibold text-[#4E5968]">{r.minutes}분</span>
+      </div>
+      <h3 className="mt-3 text-[20px] font-bold tracking-tight text-[#191F28]">{r.title}</h3>
+      <ol className="mt-3 space-y-2">
+        {r.steps.map((s, i) => (
+          <li key={s} className="flex gap-3 text-[15px] leading-relaxed text-[#333D4B]">
+            <span className="mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-full bg-[#F2F4F6] text-xs font-bold text-[#6B7684]">{i + 1}</span>
+            {s}
+          </li>
+        ))}
+      </ol>
+      <p className="mt-3 text-sm leading-relaxed text-[#8B95A1]">{r.why} · 근거 {r.level}등급</p>
+      {state === 'idle' && (
+        <button type="button" onClick={() => setState('rate')}
+          className={best ? `${CTA} mt-4 w-full py-4` : 'mt-4 w-full rounded-2xl bg-brand-soft py-4 font-semibold text-brand-ink transition hover:bg-[#DDF3E6] active:scale-[0.98]'}>
+          다 했어요
+        </button>
+      )}
+      {state === 'rate' && (
+        <div className="enter mt-4">
+          <p className="text-sm font-medium text-[#4E5968]">해보니 어때요?</p>
+          <div className="mt-2 grid grid-cols-3 gap-2">
+            {AFTER.map((t, i) => (
+              <button key={t} type="button" onClick={() => save(i)} className="rounded-2xl bg-[#F2F4F6] px-2 py-3 text-sm font-semibold text-[#333D4B] transition hover:bg-[#E5E8EB] active:scale-[0.97]">{t}</button>
+            ))}
+          </div>
+        </div>
+      )}
+      {state === 'saved' && <p className="enter mt-4 rounded-2xl bg-brand-soft py-4 text-center font-semibold text-brand-ink">✓ 잘했어요! 기록해 둘게요</p>}
+      {err && <p role="alert" className="mt-2 text-sm text-[#E5484D]">{err}</p>}
+    </article>
+  );
+}

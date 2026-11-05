@@ -1,8 +1,8 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { DatabaseSync } from 'node:sqlite';
-import { CRISIS, EMOTIONS, OK, SLOTS, cleanExtract, cleanReco, cleanVent, detectRisk, duePromise, estimateBpm, gardenStats, insights, parseAnswers, phqLevel, pickNow, rulePicks, slotStats, togetherStats, togetherText, ventNudge } from './src/lib.js';
-import { FEATURE_EVIDENCE, INTEREST, PERSONAS, PHQ9, PLACES, PLANS, ROUTINES } from './src/content.js';
+import { CRISIS, EMOTIONS, SLOTS, cleanExtract, cleanReco, detectRisk, estimateBpm, insights, parseAnswers, phqLevel, rulePicks, slotStats } from './src/lib.js';
+import { FEATURE_EVIDENCE, INTEREST, PERSONAS, PHQ9, PLANS, ROUTINES } from './src/content.js';
 import { seed } from './seed.js';
 import { distPath } from './static.js';
 
@@ -123,84 +123,4 @@ test('PHQ-9: 응답 검증 · 점수 구간 · 규칙 추천 · 모델 추천 �
   assert.equal(r.message, null);
   assert.equal(cleanReco({ picks: [], message: ' 오늘도 버텨 줘서 고마워요. ' }, ids, ['sigh', 'label', 'walk']).message, '오늘도 버텨 줘서 고마워요.');
   assert.deepEqual(cleanReco(null, ids, ['sigh', 'label', 'walk']).picks, ['sigh', 'label', 'walk']);
-});
-
-test('지금 체크: 감정 × 장소 매트릭스는 모든 칸에서 그 장소에 맞는 행동을 먼저 고른다', () => {
-  for (const r of ROUTINES) assert.ok(r.places.length && r.places.every((p) => PLACES.some((x) => x.id === p)), r.id);
-  for (const emotion of [...EMOTIONS, OK]) {
-    for (const { id } of PLACES) {
-      const [top] = pickNow(ROUTINES, { emotion, place: id, slot: '낮' });
-      assert.ok(top.places.includes(id), `${emotion} @ ${id} → ${top.id}`);
-    }
-  }
-  // 동점이면 내 기록에서 나아졌던 행동이 먼저
-  const base = { emotion: '불안·과부하', place: 'desk', slot: '낮' };
-  assert.equal(pickNow(ROUTINES, base)[0].id, 'box');
-  const leaves = [['sigh', 2], ['sigh', 1], ['box', 0], ['box', 0]].map(([routine, after]) => ({ ts: '2026-11-01T10:00', routine, after }));
-  assert.equal(pickNow(ROUTINES, { ...base, leaves })[0].id, 'sigh');
-});
-
-test('나와의 약속: 정한 시간대에 하루 한 번, 만든 직후와 자정 넘은 같은 밤에는 다시 안 뜬다', () => {
-  const p = { id: 1, slot: '아침', routine: 'toes', from: '2026-11-05T21:00', shown: null };
-  assert.equal(duePromise([p], new Date('2026-11-06T09:00')), p);
-  assert.equal(duePromise([p], new Date('2026-11-05T21:30')), null); // 아직 저녁
-  assert.equal(duePromise([{ ...p, shown: '2026-11-06T09:00' }], new Date('2026-11-06T10:00')), null); // 오늘 이미 봄
-  const night = { id: 2, slot: '밤', routine: 'todo', from: '2026-11-05T23:00', shown: null };
-  assert.equal(duePromise([night], new Date('2026-11-06T01:00')), null); // 만든 그 밤
-  assert.equal(duePromise([night], new Date('2026-11-06T23:00')), night);
-});
-
-test('마음 정원 요약: 잎·나아짐·기록한 날·내게 맞는 행동', () => {
-  const leaves = [
-    { ts: '2026-11-01T09:00', emotion: '무기력·우울', routine: 'toes', after: 1 },
-    { ts: '2026-11-01T22:00', emotion: '불안·과부하', routine: 'sigh', after: 2 },
-    { ts: '2026-11-02T09:00', emotion: '무기력·우울', routine: 'toes', after: 0 },
-    { ts: '2026-11-03T09:00', emotion: null, routine: 'toes', after: 2 },
-  ];
-  const g = gardenStats(leaves);
-  assert.equal(g.n, 4);
-  assert.equal(g.better, 3);
-  assert.equal(g.days, 3);
-  assert.deepEqual(g.by, { '무기력·우울': 2, '불안·과부하': 1, [OK]: 1 });
-  assert.deepEqual(g.best, [{ id: 'toes', n: 3, better: 2 }]);
-});
-
-test('감정 쓰레기통: 모델 출력은 스키마 밖 값을 버리고, 의료 표현이 섞인 답은 쓰지 않는다', () => {
-  const keys = PHQ9.items.map((it) => it.key);
-  assert.equal(new Set(keys).size, 9);
-  const v = cleanVent({ reply: ' 많이 지쳤겠어요. ', emotion: '분노·울분', place: 'roof', signals: { sleep: 2, mood: 7, energy: '3' }, risk: 'maybe' }, keys, PLACES.map((p) => p.id));
-  assert.equal(v.reply, '많이 지쳤겠어요.');
-  assert.equal(v.emotion, '분노·울분');
-  assert.equal(v.place, null);
-  assert.equal(v.risk, 'none');
-  assert.deepEqual(Object.keys(v.signals), keys);
-  assert.equal(v.signals.sleep, 2);
-  assert.equal(v.signals.mood, 0); // 범위 밖
-  assert.equal(v.signals.energy, 0); // 문자열
-  assert.equal(cleanVent({ reply: '우울증 치료가 필요해요' }, keys, []).reply, null);
-  assert.equal(cleanVent(null, keys, []).emotion, null);
-});
-
-test('감정 쓰레기통 신호가 2주 안에 같은 영역에서 3번 뚜렷하면 9문항 점검을 권한다(자해 생각은 위기 안내가 맡음)', () => {
-  const now = new Date('2026-11-15T12:00');
-  const v = (ts, signals) => ({ ts, emotion: null, signals });
-  const vents = [v('2026-11-14T09:00', { sleep: 2 }), v('2026-11-12T09:00', { sleep: 3, harm: 3 }), v('2026-11-10T09:00', { sleep: 1, harm: 3 }), v('2026-11-09T09:00', { harm: 3 })];
-  assert.equal(ventNudge(vents, now, PHQ9.items), null); // 잠 2번(1은 안 셈), 자해는 제외
-  const more = [...vents, v('2026-11-02T09:00', { sleep: 2 })];
-  assert.equal(ventNudge(more, now, PHQ9.items)?.key, 'sleep');
-  assert.equal(ventNudge(more, now, PHQ9.items)?.n, 3);
-  assert.equal(ventNudge([...vents, v('2026-10-30T09:00', { sleep: 3 })], now, PHQ9.items), null); // 14일 전은 안 셈
-});
-
-test('느슨한 연대: 같은 시간대의 실제 기록만 세고, 5명 미만이면 나아진 수를 숨긴다', () => {
-  const rows = [
-    { ts: '2026-11-05T23:10', after: 1 }, // 어젯밤(같은 밤)
-    { ts: '2026-11-06T00:40', after: 0 },
-    { ts: '2026-11-05T19:00', after: 2 }, // 저녁이라 안 셈
-  ];
-  assert.deepEqual(togetherStats(rows, new Date('2026-11-06T01:00')), { n: 2, better: 1, slot: '밤' });
-  assert.equal(togetherStats([{ ts: '2026-11-05T09:00', after: 1 }], new Date('2026-11-06T09:30')).n, 0); // 어제 아침
-  assert.match(togetherText({ n: 1, better: 1, slot: '아침' }, '발가락 30초 꼼지락'), /첫 번째는 나/);
-  assert.equal(togetherText({ n: 4, better: 3, slot: '밤' }, '박스 호흡'), '오늘 밤, 나까지 4명이 ‘박스 호흡’ 했어요.');
-  assert.match(togetherText({ n: 5, better: 3, slot: '밤' }, '박스 호흡'), /그중 3명은 조금이라도 나아졌어요/);
 });

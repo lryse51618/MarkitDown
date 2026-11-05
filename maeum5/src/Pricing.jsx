@@ -8,7 +8,7 @@ export default function Pricing() {
       <header className="sticky top-0 z-10 bg-[#F2F4F6]/90 backdrop-blur">
         <div className="mx-auto flex max-w-md items-center gap-2 px-6 py-4">
           <a href="/" className="flex items-center gap-2 font-bold text-[#191F28]"><Logo size={24} />마음 5분</a>
-          <a href="/" className="ml-auto text-sm text-[#8B95A1] hover:text-[#333D4B]">홈으로</a>
+          <a href="/" className="ml-auto text-sm text-[#8B95A1] hover:text-[#333D4B]">마음 체크</a>
         </div>
       </header>
       <main className="enter mx-auto max-w-md space-y-3 px-4 pb-10">

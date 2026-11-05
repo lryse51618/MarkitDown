@@ -53,16 +53,13 @@ const R = {
   kim: ['Kim, H.-G., Cheon, E.-J., Bai, D.-S., Lee, Y. H., & Koo, B.-H. (2018). Stress and heart rate variability: A meta-analysis and review of the literature. Psychiatry Investigation, 15(3), 235–245.', '스트레스 상황에서 심박변이도(HRV) 같은 자율신경 지표가 달라짐 (메타분석).'],
   drake: ['Drake, C., Roehrs, T., Shambroom, J., & Roth, T. (2013). Caffeine effects on sleep taken 0, 3, or 6 hours before going to bed. Journal of Clinical Sleep Medicine, 9(11), 1195–1200.', '잠들기 6시간 전에 마신 카페인 400mg도 총수면을 1시간 넘게 줄임 (실험).'],
   kroenke: ['Kroenke, K., Spitzer, R. L., & Williams, J. B. W. (2001). The PHQ-9: Validity of a brief depression severity measure. Journal of General Internal Medicine, 16(9), 606–613.', '9문항 점수가 우울감의 정도와 잘 맞고, 5·10·15·20점이 정도를 나누는 기준으로 쓰임 (타당도 연구).'],
-  harkin: ['Harkin, B., Webb, T. L., Chang, B. P. I., Prestwich, A., Conner, M., Kellar, I., Benn, Y., & Sheeran, P. (2016). Does monitoring goal progress promote goal attainment? A meta-analysis of the experimental evidence. Psychological Bulletin, 142(2), 198–229.', '목표 진행을 기록하고 확인하게 하면 목표 달성이 높아지고, 눈에 보이게 기록할 때 효과가 더 컸음 (메타분석).'],
-  frattaroli: ['Frattaroli, J. (2006). Experimental disclosure and its moderators: A meta-analysis. Psychological Bulletin, 132(6), 823–865.', '감정과 경험을 글로 털어놓는 실험(표현적 글쓰기)은 작지만 긍정적인 효과가 있었음 (메타분석).'],
-  sandstrom: ['Sandstrom, G. M., & Dunn, E. W. (2014). Social interactions and well-being: The surprising power of weak ties. Personality and Social Psychology Bulletin, 40(7), 910–922.', '가벼운 사이(약한 유대)와 마주친 날일수록 소속감과 기분이 더 좋았음 (연구).'],
   park: ['Park, S.-J., Choi, H.-R., Choi, J.-H., Kim, K.-W., & Hong, J.-P. (2010). Reliability and validity of the Korean version of the Patient Health Questionnaire-9 (PHQ-9). Anxiety and Mood, 6(2), 119–124.', '한국어판 PHQ-9의 신뢰도와 타당도를 확인한 연구.'],
 };
 const refs = (...keys) => keys.map((k) => ({ cite: R[k][0], finding: R[k][1] }));
 
 export const ROUTINES = [
   {
-    id: 'toes', emotion: '무기력·우울', situation: '침대 위 · 눈 뜬 직후', slots: ['아침'], places: ['bed'], principle: '행동 활성화',
+    id: 'toes', emotion: '무기력·우울', situation: '침대 위 · 눈 뜬 직후', slots: ['아침'], principle: '행동 활성화',
     title: '발가락 30초 꼼지락', minutes: 2,
     steps: ['누운 채로 발가락을 30초 꼼지락', '이불을 발로 차서 한 번에 개기', '커튼 열고 물 한 잔'],
     why: '마음이 움직이길 기다리기보다 몸을 아주 조금 먼저 움직여요.',
@@ -70,42 +67,42 @@ export const ROUTINES = [
     refs: refs('cuijpers', 'ekers', 'gollwitzer'),
   },
   {
-    id: 'walk', emotion: '무기력·우울', situation: '방 안 · 오후', slots: ['낮', '저녁'], places: ['home'], principle: '짧은 신체 활동',
+    id: 'walk', emotion: '무기력·우울', situation: '방 안 · 오후', slots: ['낮', '저녁'], principle: '짧은 신체 활동',
     title: '현관 밖 3분 걷기', minutes: 5,
     steps: ['신발 신고 현관 밖으로 나가기', '햇빛 쪽으로 3분 걷기', '돌아와서 물 한 잔'],
     why: '짧게라도 걸으면 몸의 활력이 먼저 올라와요.',
     level: 'B', refs: refs('thayer', 'noetel', 'singh'),
   },
   {
-    id: 'kind', emotion: '무기력·우울', situation: '탈락 소식 뒤 · 저녁', slots: ['저녁', '밤'], places: ['home', 'bed', 'desk', 'move'], principle: '자기연민',
+    id: 'kind', emotion: '무기력·우울', situation: '탈락 소식 뒤 · 저녁', slots: ['저녁', '밤'], principle: '자기연민',
     title: '친구에게 하듯 나에게 한 문장', minutes: 3,
     steps: ['오늘 힘들었던 일을 한 줄로 적기', '같은 일을 겪은 친구에게 해줄 말 적기', '그 문장을 나에게 소리 내어 읽기'],
     why: '자책 대신 친구에게 하듯 말하면 다시 해볼 힘이 남아요.',
     level: 'B', refs: refs('breines', 'ferrari'),
   },
   {
-    id: 'box', emotion: '불안·과부하', situation: '강의실·사무실 · 낮', slots: ['아침', '낮'], places: ['desk', 'move'], principle: '느린 호흡',
+    id: 'box', emotion: '불안·과부하', situation: '강의실·사무실 · 낮', slots: ['아침', '낮'], principle: '느린 호흡',
     title: '박스 호흡 4-4-4-4', minutes: 2,
     steps: ['4초 들이마시고 4초 멈추기', '4초 내쉬고 4초 멈추기', '이렇게 5번 반복'],
     why: '숨을 천천히 세면 몸의 긴장 신호가 잦아들어요.',
     level: 'B', refs: refs('balban', 'zaccaro', 'ma'),
   },
   {
-    id: 'sigh', emotion: '불안·과부하', situation: '어디서나 · 숨이 얕을 때', slots: ['낮', '저녁', '밤'], places: ['desk', 'move', 'home', 'bed'], principle: '긴 날숨',
+    id: 'sigh', emotion: '불안·과부하', situation: '어디서나 · 숨이 얕을 때', slots: ['낮', '저녁', '밤'], principle: '긴 날숨',
     title: '두 번 들이쉬고 길게 내쉬기', minutes: 3,
     steps: ['코로 깊게 한 번, 짧게 한 번 더 들이쉬기', '입으로 천천히 길게 내쉬기', '1~5분 반복하기'],
     why: '날숨을 길게 하면 몸이 쉬는 쪽으로 기울어요.',
     level: 'B', refs: refs('balbanSigh', 'zaccaro'),
   },
   {
-    id: 'todo', emotion: '불안·과부하', situation: '침대 위 · 잠들기 전', slots: ['밤'], places: ['bed'], principle: '걱정을 종이로 옮기기',
+    id: 'todo', emotion: '불안·과부하', situation: '침대 위 · 잠들기 전', slots: ['밤'], principle: '걱정을 종이로 옮기기',
     title: '잠들기 전 5분 할 일 적기', minutes: 5,
     steps: ['내일 할 일을 떠오르는 대로 5분간 적기', '적은 종이는 침대 밖에 두기', '불 끄고 숨 길게 세 번'],
     why: '머릿속 할 일을 종이에 옮기면 잠자리에서 덜 붙잡혀요.',
     level: 'B', refs: refs('scullin', 'harvey'),
   },
   {
-    id: 'step', emotion: '분노·울분', situation: '대중교통·알바 중', slots: ['낮', '저녁'], places: ['move', 'desk'], principle: '각성 낮추기 · 주의 전환',
+    id: 'step', emotion: '분노·울분', situation: '대중교통·알바 중', slots: ['낮', '저녁'], principle: '각성 낮추기 · 주의 전환',
     title: '한 걸음 물러나 날숨 길게', minutes: 3,
     steps: ['그 자리에서 몇 걸음 떨어지기', '날숨을 들숨보다 두 배 길게, 10번', '천천히 걸으며 보이는 것 5개 세기'],
     why: '화를 터뜨리기보다 몸의 각성을 먼저 낮춰요.',
@@ -113,14 +110,14 @@ export const ROUTINES = [
     refs: refs('kjaervik', 'bushman'),
   },
   {
-    id: 'label', emotion: '분노·울분', situation: '어디서나 · 감정이 확 올라올 때', slots: ['아침', '낮', '저녁', '밤'], places: ['desk', 'move', 'home', 'bed'], principle: '감정에 이름 붙이기',
+    id: 'label', emotion: '분노·울분', situation: '어디서나 · 감정이 확 올라올 때', slots: ['아침', '낮', '저녁', '밤'], principle: '감정에 이름 붙이기',
     title: '감정 이름 한 단어로 적기', minutes: 1,
     steps: ['지금 감정을 한 단어로 적기 (예: 억울함)', '세기를 1~10으로 적기', '30초 뒤 세기를 다시 적기'],
     why: '감정에 이름을 붙이면 한 발짝 떨어져 볼 수 있어요.',
     level: 'B', refs: refs('lieberman', 'torre'),
   },
   {
-    id: 'reread', emotion: '고독·소외감', situation: '방 안 · 늦은 밤', slots: ['밤', '저녁'], places: ['home', 'bed'], principle: '연결의 기억 떠올리기',
+    id: 'reread', emotion: '고독·소외감', situation: '방 안 · 늦은 밤', slots: ['밤', '저녁'], principle: '연결의 기억 떠올리기',
     title: '고마웠던 메시지 다시 읽기', minutes: 3,
     steps: ['메신저에서 고마웠던 대화 하나 찾기', '천천히 다시 읽기', '그때 기분을 한 줄로 적기'],
     why: '혼자인 밤에도 이어져 있던 순간을 다시 꺼내 봐요.',
@@ -128,7 +125,7 @@ export const ROUTINES = [
     refs: refs('zhou', 'cregg'),
   },
   {
-    id: 'hello', emotion: '고독·소외감', situation: '방 안 · 저녁', slots: ['낮', '저녁'], places: ['home', 'move', 'desk'], principle: '작은 연결 시도',
+    id: 'hello', emotion: '고독·소외감', situation: '방 안 · 저녁', slots: ['낮', '저녁'], principle: '작은 연결 시도',
     title: '안부 한 줄 보내기', minutes: 2,
     steps: ['요즘 연락 못 한 사람 한 명 떠올리기', '"생각나서 연락했어" 한 줄 보내기', '답장은 기다리지 않기'],
     why: '보내는 쪽 생각보다 받는 쪽은 훨씬 반가워해요.',
@@ -137,10 +134,6 @@ export const ROUTINES = [
 ];
 
 export const FEATURE_EVIDENCE = [
-  { id: 'vent', title: '감정 쓰레기통', use: '1분 동안 털어놓은 글에서 감정에 이름을 붙이고, 바로 각성을 낮추는 5분 행동으로 이어줘요. 글은 저장하지 않고 버려요.', limit: '화를 쏟아내기만 하면 오히려 커질 수 있어서(Bushman, 2002) 털어놓기에서 끝내지 않아요. AI가 읽은 신호는 진단이나 점수가 아니에요.', refs: refs('frattaroli', 'lieberman', 'bushman') },
-  { id: 'together', title: '느슨한 연대', use: '같은 시간대에 같은 5분 행동을 한 실제 익명 이용자 수를 보여줘요. 숫자를 지어내지 않아요.', limit: '5명 미만이면 나아진 사람 수는 보여주지 않아요.', refs: refs('sandstrom') },
-  { id: 'garden', title: '마음 정원', use: '해본 5분 행동을 잎으로 쌓아 눈으로 보여줘요. 잎 색은 그때의 감정, 크기는 해보고 나아진 정도예요.', limit: '기록을 보여주는 장치이지 효과를 보장하지 않아요.', refs: refs('harkin') },
-  { id: 'promise', title: '나와의 약속', use: '"그 시간이 오면 → 이 5분 행동"을 미리 정해 두고, 그 시간에 앱을 열면 먼저 보여줘요.', limit: '웹에서는 앱을 열 때만 보여요. 앱 출시 때 알림으로 바꿔요.', refs: refs('gollwitzer') },
   { id: 'phq9', title: 'PHQ-9 마음 체크', use: '지난 2주의 마음 상태를 9문항으로 스스로 점검하고, 점수 구간은 표준 기준을 따라요.', limit: '진단이 아니에요. 10점 이상이면 전문가와 이야기해 보길 권하는 기준으로만 써요.', refs: refs('kroenke', 'park') },
   { id: 'rppg', title: '웹캠 심박 측정 (rPPG)', use: '이마 피부색의 미세한 변화로 맥박을 추정하고, 평소 대비 변화만 참고로 보여줘요.', limit: '조명·움직임에 민감하고 의료용 측정이 아니에요.', refs: refs('verkruysse', 'poh', 'wang') },
   { id: 'hr', title: '심박과 긴장 상태', use: '평균 심박이 평소보다 10 이상 높으면 호흡 루틴을 권해요.', limit: '스트레스 지수는 심박변이도(HRV)가 필요해 아직 계산하지 않아요.', refs: refs('kim') },
@@ -154,15 +147,15 @@ export const PHQ9 = {
   prompt: '지난 2주일 동안 당신은 다음의 문제들로 인해서 얼마나 자주 방해를 받았습니까?',
   options: ['전혀 방해 받지 않았다', '며칠 동안 방해 받았다', '7일 이상 방해 받았다', '거의 매일 방해 받았다'],
   items: [
-    { text: '일 또는 여가 활동을 하는 데 흥미나 즐거움을 느끼지 못함', short: '흥미·즐거움 저하', key: 'interest', routines: ['walk', 'toes'] },
-    { text: '기분이 가라앉거나, 우울하거나, 희망이 없음', short: '가라앉은 기분', key: 'mood', routines: ['kind', 'reread'] },
-    { text: '잠이 들거나 계속 잠을 자는 것이 어려움, 또는 잠을 너무 많이 잠', short: '잠 문제', key: 'sleep', routines: ['todo', 'sigh'] },
-    { text: '피곤하다고 느끼거나 기운이 거의 없음', short: '피로·기운 없음', key: 'energy', routines: ['toes', 'walk'] },
-    { text: '입맛이 없거나 과식을 함', short: '식욕 변화', key: 'appetite', routines: ['label', 'walk'] },
-    { text: '자신을 부정적으로 봄 - 혹은 자신이 실패자라고 느끼거나 자신 또는 가족을 실망시킴', short: '자기 비난', key: 'self', routines: ['kind', 'hello'] },
-    { text: '신문을 읽거나 텔레비전 보는 것과 같은 일에 집중하는 것이 어려움', short: '집중 어려움', key: 'focus', routines: ['box', 'sigh'] },
-    { text: '다른 사람들이 주목할 정도로 너무 느리게 움직이거나 말을 함. 또는 반대로 평상시보다 많이 움직여서, 너무 안절부절 못하거나 들떠 있음', short: '느려짐·안절부절', key: 'motor', routines: ['sigh', 'step'] },
-    { text: '자신이 죽는 것이 더 낫다고 생각하거나 어떤 식으로든 자신을 해칠 것이라고 생각함', short: '자해 생각', key: 'harm', routines: ['sigh', 'label'] },
+    { text: '일 또는 여가 활동을 하는 데 흥미나 즐거움을 느끼지 못함', short: '흥미·즐거움 저하', routines: ['walk', 'toes'] },
+    { text: '기분이 가라앉거나, 우울하거나, 희망이 없음', short: '가라앉은 기분', routines: ['kind', 'reread'] },
+    { text: '잠이 들거나 계속 잠을 자는 것이 어려움, 또는 잠을 너무 많이 잠', short: '잠 문제', routines: ['todo', 'sigh'] },
+    { text: '피곤하다고 느끼거나 기운이 거의 없음', short: '피로·기운 없음', routines: ['toes', 'walk'] },
+    { text: '입맛이 없거나 과식을 함', short: '식욕 변화', routines: ['label', 'walk'] },
+    { text: '자신을 부정적으로 봄 - 혹은 자신이 실패자라고 느끼거나 자신 또는 가족을 실망시킴', short: '자기 비난', routines: ['kind', 'hello'] },
+    { text: '신문을 읽거나 텔레비전 보는 것과 같은 일에 집중하는 것이 어려움', short: '집중 어려움', routines: ['box', 'sigh'] },
+    { text: '다른 사람들이 주목할 정도로 너무 느리게 움직이거나 말을 함. 또는 반대로 평상시보다 많이 움직여서, 너무 안절부절 못하거나 들떠 있음', short: '느려짐·안절부절', routines: ['sigh', 'step'] },
+    { text: '자신이 죽는 것이 더 낫다고 생각하거나 어떤 식으로든 자신을 해칠 것이라고 생각함', short: '자해 생각', routines: ['sigh', 'label'] },
   ],
   // 구간은 PHQ-9 표준 기준(0–4, 5–9, 10–14, 15–19, 20–27). 문구는 판정이 아니라 안내로 쓴다.
   levels: [
@@ -216,11 +209,3 @@ export const PLANS = {
 };
 // 지불 의향 확인 버튼 (출시 전 가격 검증용, 판매가 아님)
 export const INTEREST = ['이 가격이면 써볼래요', '더 싸면 써볼래요', '필요 없어요'];
-
-// 지금 체크의 장소 (감정 × 장소 × 시간대 매트릭스). 각 행동의 places와 짝을 맞춘다
-export const PLACES = [
-  { id: 'bed', label: '침대 위' },
-  { id: 'desk', label: '학교·일터' },
-  { id: 'move', label: '이동 중' },
-  { id: 'home', label: '방 안·집' },
-];

@@ -2,7 +2,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { FEATURE_EVIDENCE, LEVELS, PERSONAS, ROUTINES } from './content.js';
 import { Logo } from './common.jsx';
-import { EMOTIONS, MIN_DAYS, api, dateKey, estimateBpm, insights, josa, mean, slotOf, slotStats, SLOTS } from './lib.js';
+import { EMOTIONS, MIN_DAYS, api, dateKey, estimateBpm, insights, mean, slotOf, slotStats, SLOTS } from './lib.js';
 
 // 차트 색: dataviz 기본 팔레트 1~3번(색약 검사 통과). 3번 청록은 대비 3:1 미만이라 값 라벨·표 보기를 함께 둔다.
 const C = { sleep: '#2a78d6', caffeine: '#eb6834', hr: '#1baf7a', grid: '#e1e0d9', axis: '#c3c2b7', muted: '#898781', ink: '#0b0b0b' };
@@ -17,6 +17,7 @@ const MIN_QUALITY = 0.25; // 이보다 신호가 약하면 저장하지 않는�
 const md = (date) => `${Number(date.slice(5, 7))}/${Number(date.slice(8, 10))}`;
 const r1 = (v) => (v == null ? '–' : Math.round(v * 10) / 10);
 const daysAgo = (n) => dateKey(new Date(Date.now() - n * 864e5));
+const josa = (word, withFinal, without) => word + ((word.charCodeAt(word.length - 1) - 0xac00) % 28 ? withFinal : without); // 과부하를 / 우울을
 
 export default function App() {
   const [p, setP] = useState('A');
@@ -82,10 +83,10 @@ export default function App() {
         <div className="mx-auto flex max-w-7xl flex-wrap items-center gap-3 px-4 py-3">
           <div className="mr-auto">
             <h1 className="flex items-center gap-2 text-lg font-bold"><Logo size={24} />마음 5분 매트릭스</h1>
-            <p className="text-xs text-stone-500">30일 기록 리포트 미리보기 · 시연용 가상 인물 데이터 · 의료 서비스가 아니에요</p>
+            <p className="text-xs text-stone-500">셀프케어 보조 앱 · 의료 서비스가 아니에요</p>
           </div>
           <a href="/pricing" className="rounded-full px-3 py-1.5 text-sm text-stone-600 hover:bg-stone-100">요금 안내</a>
-          <a href="/" className="rounded-full px-3 py-1.5 text-sm text-stone-600 hover:bg-stone-100">홈으로 →</a>
+          <a href="/" className="rounded-full px-3 py-1.5 text-sm text-stone-600 hover:bg-stone-100">마음 체크 →</a>
           <div role="group" aria-label="시연 페르소나 전환" className="flex rounded-full bg-stone-100 p-1 text-sm">
             {Object.values(PERSONAS).map((x) => (
               <button key={x.id} type="button" aria-pressed={p === x.id} onClick={() => setP(x.id)}
