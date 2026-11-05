@@ -4,6 +4,7 @@ import { DatabaseSync } from 'node:sqlite';
 import { CRISIS, EMOTIONS, SLOTS, cleanExtract, detectRisk, estimateBpm, insights, slotStats } from './src/lib.js';
 import { FEATURE_EVIDENCE, PERSONAS, ROUTINES } from './src/content.js';
 import { seed } from './seed.js';
+import { distPath } from './static.js';
 
 const rand = (s = 7) => () => ((s = (s * 16807) % 2147483647) / 2147483647);
 
@@ -68,6 +69,17 @@ test('시드 데이터: 두 페르소나의 패턴이 다르게 나온다', () =
   assert.equal(B.stats.find((x) => x.slot === '밤').top, '불안·과부하');
   assert.ok(B.ins.items.some((x) => x.text === '카페인을 많이 마신 날 밤 잠이 짧아지는 경향'), JSON.stringify(B.ins.items));
   assert.ok(!A.ins.items.some((x) => x.text.startsWith('카페인을 많이 마신 날 밤')), JSON.stringify(A.ins.items));
+});
+
+test('배포 모드는 dist 밖 파일을 내보내지 않는다', () => {
+  const root = '/srv/app/dist';
+  assert.equal(distPath(root, '/assets/index-a1.js'), '/srv/app/dist/assets/index-a1.js');
+  assert.equal(distPath(root, '/'), '/srv/app/dist/');
+  for (const evil of ['/..%2f..%2fmaeum5.db', '/%2e%2e/server.js', '/assets/..%2f..%2f..%2fetc/passwd', '/%E0%A4%A']) {
+    const got = distPath(root, evil);
+    assert.ok(got === null || got.startsWith(root + '/'), `${evil} → ${got}`);
+  }
+  assert.equal(distPath(root, '/..%2f..%2fmaeum5.db'), null);
 });
 
 test('콘텐츠: 의료 표현 없음, 행동마다 근거 2~3편', () => {

@@ -1,15 +1,21 @@
-// 마음 5분 매트릭스 — API 서버 + 화면(Vite 미들웨어). 실행: npm start → http://localhost:5173
+// 마음 5분 매트릭스 — API 서버 + 화면. 개발: npm start (Vite) / 배포: npm run build 후 npm run serve (dist/만 공개)
 import http from 'node:http';
+import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 import Anthropic from '@anthropic-ai/sdk';
 import { createServer as createVite } from 'vite';
 import { seed } from './seed.js';
+import { serveStatic } from './static.js';
 import { PERSONAS, ROUTINES } from './src/content.js';
 import { CRISIS, EMOTIONS, OK, SLOTS, cleanExtract, dateKey, detectRisk, slotOf, slotStats, stamp } from './src/lib.js';
 
 const PORT = Number(process.env.PORT ?? 5173);
+const PROD = process.argv.includes('--prod');
+const DIST = join(import.meta.dirname, 'dist');
+if (PROD && !existsSync(join(DIST, 'index.html'))) throw new Error('dist/가 없어요. 먼저 npm run build 를 실행해 주세요');
 const MODEL = 'claude-opus-5-5'; // 비용을 낮추려면 'claude-haiku-5-5' (README 비용 표)
+const MAX_CHATS_PER_DAY = 300; // 공개 주소로 배포했을 때 API 비용이 끝없이 나가지 않게
 
 const db = new DatabaseSync(join(import.meta.dirname, 'maeum5.db'));
 db.exec(`
@@ -96,6 +102,7 @@ function contextNote(p, now) {
 }
 
 let client;
+let quota = { day: '', chats: 0 };
 async function chat(p, text) {
   const now = new Date();
   const ts = stamp(now);
@@ -104,6 +111,8 @@ async function chat(p, text) {
     insertMessage.run(p, ts, 'assistant', CRISIS);
     return { reply: CRISIS, risk: 'urgent', slot: slotOf(now) };
   }
+  if (quota.day !== dateKey(now)) quota = { day: dateKey(now), chats: 0 };
+  if (++quota.chats > MAX_CHATS_PER_DAY) throw new Error(`오늘 대화 한도(${MAX_CHATS_PER_DAY}번)를 넘었어요. 내일 다시 이용해 주세요`);
   const note = contextNote(p, now);
   const history = q('SELECT role, content FROM messages WHERE persona = ? ORDER BY id').all(p).map(({ role, content }) => ({ role, content }));
   while (history.length && history[0].role !== 'user') history.shift(); // API 대화는 user로 시작해야 한다
@@ -195,6 +204,8 @@ async function api(req, res) {
 }
 
 const server = http.createServer();
-const vite = await createVite({ root: import.meta.dirname, appType: 'spa', server: { middlewareMode: true, hmr: { server } } });
-server.on('request', (req, res) => (req.url.startsWith('/api/') ? api(req, res) : vite.middlewares(req, res)));
-server.listen(PORT, () => console.log(`마음 5분 매트릭스 → http://localhost:${PORT}`));
+const web = PROD
+  ? serveStatic(DIST)
+  : (await createVite({ root: import.meta.dirname, appType: 'spa', server: { middlewareMode: true, hmr: { server } } })).middlewares;
+server.on('request', (req, res) => (req.url.startsWith('/api/') ? api(req, res) : web(req, res)));
+server.listen(PORT, () => console.log(`마음 5분 매트릭스${PROD ? ' (배포 모드)' : ''} → http://localhost:${PORT}`));

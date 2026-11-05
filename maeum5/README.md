@@ -24,6 +24,23 @@ npm start               # http://localhost:5173
 - `npm run reset` — 서버를 끈 뒤 실행하면 DB를 지우고, 다음 `npm start` 때 오늘 기준 14일 시연 데이터를 새로 만들어요
 - `npm run simulate -- A 6` — 서버를 켠 상태에서 실행하면 Claude가 페르소나 A를 연기하며 챗봇과 6번 대화하고, 그 기록이 DB에 쌓여요
 
+## 웹에 올리기 (배포)
+
+공개 주소에는 `npm start`(개발 서버)를 쓰면 안 돼요. 개발 서버는 DB 파일까지 내보내요. 배포할 땐 빌드한 화면만 내보내는 배포 모드로 실행해요: `npm run build` 다음 `npm run serve`.
+
+**Render (무료, GitHub 연결)** — 무료 플랜 조건은 바뀔 수 있으니 가입할 때 확인하세요.
+
+1. render.com에 GitHub로 가입 → New → Web Service → 저장소 `lryse51618/MarkitDown`, 브랜치 `claude/loving-mendel-887a62`
+2. Root Directory `maeum5` · Build Command `npm install && npm run build` · Start Command `npm run serve` · Instance Type Free
+3. Environment Variables: `NODE_VERSION` = `22`, `ANTHROPIC_API_KEY` = 콘솔 키
+4. 배포가 끝나면 `https://<서비스 이름>.onrender.com` 주소가 생겨요. HTTPS라 웹캠 측정도 돼요.
+
+무료 플랜은 한동안(보통 15분) 접속이 없으면 잠들고, 다음 첫 접속에 1분쯤 걸려요. 시연 직전에 한 번 열어 두세요. 디스크도 유지되지 않아서 서버가 다시 켜지면 DB가 그날 기준 시연 데이터로 돌아가요. 쌓은 대화를 남기려면 유료 디스크를 붙이거나 내 컴퓨터에서 실행하세요.
+
+**내 Mac에서 임시 공유 (계정 없이)** — `npm run serve`를 켠 채로 `brew install cloudflared` → `cloudflared tunnel --url http://localhost:5173` 을 실행하면 `https://….trycloudflare.com` 주소가 나와요. Mac이 켜져 있는 동안만 열려요.
+
+공개 주소는 누구나 대화를 보낼 수 있어서, 하루 300번이 넘으면 서버가 대화를 막아요(`server.js`의 `MAX_CHATS_PER_DAY`). Anthropic 콘솔에서 월 사용 한도도 걸어 두세요.
+
 ## 시연 순서 (라이브 대화 없이도 됨)
 
 1. A(취준생): 아침 기분이 가장 낮고(무기력·우울), 밤에는 고독·소외감이 많아요. "잠을 더 잔 날 기분이 높은 경향"이 보여요. 아침 칸을 누르면 '발가락 30초 꼼지락' 카드가 떠요.
