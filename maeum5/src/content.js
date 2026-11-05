@@ -5,6 +5,7 @@ export const PERSONAS = {
   A: {
     id: 'A', name: '민준', age: 28, label: '취준생',
     summary: '취업 준비 3년째. 서류 탈락이 이어지며 늦잠과 무기력이 반복돼요.',
+    phq9: [2, 2, 2, 2, 1, 3, 1, 1, 0], // 시연용 가상 2주 마음 점검 응답 (14점)
     pattern:
       '새벽 2~3시에 자고 10~11시에 일어나요(수면 5~9시간으로 들쭉날쭉). 눈 뜨자마자 채용 메일과 동기들 SNS를 보고 침대 위에서 무기력해져요. ' +
       '오후엔 도서관에서 커피 1~2잔. 자정 넘어 혼자 방에 있으면 외로움과 비교가 커져요. 서류 탈락 문자를 받은 날이 가장 힘들어요.',
@@ -12,6 +13,7 @@ export const PERSONAS = {
   B: {
     id: 'B', name: '서연', age: 21, label: '대학생',
     summary: '대학교 3학년. 과제·발표·알바가 겹쳐 잠이 짧고 카페인에 기대요.',
+    phq9: [1, 1, 2, 2, 0, 1, 1, 1, 0], // 시연용 가상 2주 마음 점검 응답 (9점)
     pattern:
       '평일엔 4~6시간, 주말엔 몰아서 8~9시간 자요. 아메리카노와 에너지드링크를 하루 3~5잔, 저녁 8시 넘어서도 마셔요. ' +
       '수업·발표 전 낮과 마감을 앞둔 자정 무렵 불안이 커져요. 저녁 카페 알바에서 무리한 손님을 만나면 울분이 올라와요.',
@@ -52,6 +54,7 @@ const R = {
   wang: ['Wang, W., den Brinker, A. C., Stuijk, S., & de Haan, G. (2017). Algorithmic principles of remote PPG. IEEE Transactions on Biomedical Engineering, 64(7), 1479–1491.', '이 앱이 쓰는 POS 알고리즘 — 조명 세기 변화에 강한 RGB 투영 방식.'],
   kim: ['Kim, H.-G., Cheon, E.-J., Bai, D.-S., Lee, Y. H., & Koo, B.-H. (2018). Stress and heart rate variability: A meta-analysis and review of the literature. Psychiatry Investigation, 15(3), 235–245.', '스트레스 상황에서 심박변이도(HRV) 같은 자율신경 지표가 달라짐 (메타분석).'],
   drake: ['Drake, C., Roehrs, T., Shambroom, J., & Roth, T. (2013). Caffeine effects on sleep taken 0, 3, or 6 hours before going to bed. Journal of Clinical Sleep Medicine, 9(11), 1195–1200.', '잠들기 6시간 전에 마신 카페인 400mg도 총수면을 1시간 넘게 줄임 (실험).'],
+  jordan: ['Jordan, A. H., Monin, B., Dweck, C. S., Lovett, B. J., John, O. P., & Gross, J. J. (2011). Misery has more company than people think: Underestimating the prevalence of others’ negative emotions. Personality and Social Psychology Bulletin, 37(1), 120–135.', '사람들은 남들이 겪는 부정적인 감정을 실제보다 적게 어림했고, 적게 어림할수록 외로움이 크고 삶의 만족이 낮았음 (설문·상관 연구).'],
   kroenke: ['Kroenke, K., Spitzer, R. L., & Williams, J. B. W. (2001). The PHQ-9: Validity of a brief depression severity measure. Journal of General Internal Medicine, 16(9), 606–613.', '9문항 점수가 우울감의 정도와 잘 맞고, 5·10·15·20점이 정도를 나누는 기준으로 쓰임 (타당도 연구).'],
   park: ['Park, S.-J., Choi, H.-R., Choi, J.-H., Kim, K.-W., & Hong, J.-P. (2010). Reliability and validity of the Korean version of the Patient Health Questionnaire-9 (PHQ-9). Anxiety and Mood, 6(2), 119–124.', '한국어판 PHQ-9의 신뢰도와 타당도를 확인한 연구.'],
 };
@@ -134,6 +137,7 @@ export const ROUTINES = [
 ];
 
 export const FEATURE_EVIDENCE = [
+  { id: 'similar', title: '이번 달 비슷한 사람들', use: '2주 마음 점검 뒤, 이번 달 나와 비슷한 점수(±2점)였던 사람과 같은 부분이 자주 힘들었던 사람이 몇 명인지 보여줘요. 나만 이런 게 아니라는 걸 숫자로 알려줘요.', limit: '실제 결과 화면은 실제 응답만 세요. 시연 대시보드는 가상 응답을 더해 보여주고 그 수를 따로 적어요. 비교 평가가 아니에요.', refs: refs('jordan') },
   { id: 'phq9', title: 'PHQ-9 마음 체크', use: '지난 2주의 마음 상태를 9문항으로 스스로 점검하고, 점수 구간은 표준 기준을 따라요.', limit: '진단이 아니에요. 10점 이상이면 전문가와 이야기해 보길 권하는 기준으로만 써요.', refs: refs('kroenke', 'park') },
   { id: 'rppg', title: '웹캠 심박 측정 (rPPG)', use: '이마 피부색의 미세한 변화로 맥박을 추정하고, 평소 대비 변화만 참고로 보여줘요.', limit: '조명·움직임에 민감하고 의료용 측정이 아니에요.', refs: refs('verkruysse', 'poh', 'wang') },
   { id: 'hr', title: '심박과 긴장 상태', use: '평균 심박이 평소보다 10 이상 높으면 호흡 루틴을 권해요.', limit: '스트레스 지수는 심박변이도(HRV)가 필요해 아직 계산하지 않아요.', refs: refs('kim') },

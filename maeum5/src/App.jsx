@@ -1,8 +1,8 @@
 // 마음 5분 매트릭스 — 시연 화면 (한 화면에 페르소나 전환 · 7일 차트 · 웹캠 심박 · AI 대화 · 5분 루틴)
 import { useEffect, useRef, useState } from 'react';
-import { FEATURE_EVIDENCE, LEVELS, PERSONAS, ROUTINES } from './content.js';
+import { FEATURE_EVIDENCE, LEVELS, PERSONAS, PHQ9, ROUTINES } from './content.js';
 import { Logo } from './common.jsx';
-import { EMOTIONS, MIN_DAYS, api, dateKey, estimateBpm, insights, mean, slotOf, slotStats, SLOTS } from './lib.js';
+import { EMOTIONS, MIN_DAYS, api, dateKey, estimateBpm, insights, mean, phqLevel, slotOf, slotStats, SLOTS } from './lib.js';
 
 // 차트 색: dataviz 기본 팔레트 1~3번(색약 검사 통과). 3번 청록은 대비 3:1 미만이라 값 라벨·표 보기를 함께 둔다.
 const C = { sleep: '#2a78d6', caffeine: '#eb6834', hr: '#1baf7a', grid: '#e1e0d9', axis: '#c3c2b7', muted: '#898781', ink: '#0b0b0b' };
@@ -100,6 +100,8 @@ export default function App() {
       {err && <p role="alert" className="mx-auto max-w-7xl px-4 pt-3 text-sm text-red-700">{err}</p>}
 
       <main className={`mx-auto grid max-w-7xl gap-4 p-4 lg:grid-cols-12 ${stale ? 'pointer-events-none opacity-50' : ''}`}>
+        <SimilarPanel key={P.id} P={P} s={s.similar} onEvidence={() => showEvidence('similar')} />
+
         <Panel className="lg:col-span-4" title={`${P.name} (${P.age})`} note={`${P.label} · 시연용 가상 인물`}>
           <p className="text-sm text-stone-700">{P.summary}</p>
           <p className="mt-2 text-xs leading-relaxed text-stone-500">{P.pattern}</p>
@@ -269,6 +271,89 @@ export default function App() {
       </footer>
       {toast && <div role="status" className="fixed bottom-4 left-1/2 -translate-x-1/2 rounded-full bg-stone-900 px-4 py-2 text-sm text-white shadow-lg">{toast}</div>}
     </div>
+  );
+}
+
+// 이번 달 비슷한 사람들: 페르소나의 가상 2주 점검 점수와 이번 달 응답(가상 + 실제)을 비교한다
+const ACCENT = '#00A344', REST = '#B8B7AE'; // 강조 1색 + 회색(색약 검사 통과). 회색은 대비 3:1 미만이라 범례·표 보기를 함께 둔다
+function SimilarPanel({ P, s, onEvidence }) {
+  const [asTable, setAsTable] = useState(false);
+  const nameWith = josa(P.name, '과', '와');
+  return (
+    <Panel className="lg:col-span-12" title={`이번 달, ${nameWith} 비슷한 사람들`} note="2주 마음 점검(PHQ-9) 점수 비교"
+      action={<button type="button" onClick={() => setAsTable(!asTable)} className="text-xs text-stone-600 underline">{asTable ? '차트로 보기' : '표로 보기'}</button>}>
+      <div className="grid gap-5 lg:grid-cols-[1fr_1.5fr]">
+        <div>
+          <p className="text-sm text-stone-600">{P.name}의 2주 마음 점검 <b className="font-semibold text-stone-900">{s.total}점</b> · {phqLevel(s.total, PHQ9.levels).label}</p>
+          <p className="mt-4 text-sm text-stone-600">이번 달 {nameWith} 비슷한 점수({s.range[0]}~{s.range[1]}점)를 받은 사람</p>
+          <p className="text-5xl font-bold tracking-tight text-stone-900">{s.score}명</p>
+          {s.part && <p className="mt-3 text-sm text-stone-600">{P.name}처럼 ‘{s.part.short}’ 때문에 자주 힘들었던 사람 <b className="text-lg font-semibold text-stone-900">{s.part.n}명</b></p>}
+          <p className="mt-4 rounded-xl bg-brand-soft p-3 text-sm leading-relaxed text-stone-800">
+            {P.name}만 그런 게 아니에요. 이번 달 마음 점검을 한 {s.n}명 중 {s.score}명이 비슷한 점수였어요. 결과 화면에서 이 숫자로 ‘나만 이런가’ 싶은 마음에 비슷한 사람이 있다는 걸 알려줘요.
+          </p>
+          <p className="mt-2 text-[11px] leading-relaxed text-stone-500">
+            시연용 가상 응답 {s.virtual}명 + 실제 응답 {s.real}명 기준이에요. 실제 결과 화면에는 실제 응답만 세요. <button type="button" onClick={onEvidence} className="underline">근거 보기</button>
+          </p>
+        </div>
+        {asTable ? <BandTable s={s} /> : <ScoreHist s={s} name={P.name} />}
+      </div>
+    </Panel>
+  );
+}
+
+function ScoreHist({ s, name }) {
+  const [hover, setHover] = useState(null);
+  const W = 480, H = 170, L = 30, R = 10, T = 24, B = 34;
+  const max = Math.max(4, Math.ceil(Math.max(...s.hist) / 4) * 4);
+  const y = (v) => T + (H - T - B) * (1 - v / max);
+  const band = (W - L - R) / 28;
+  const x = (t) => L + band * (t + 0.5);
+  const near = (t) => t >= s.range[0] && t <= s.range[1];
+  const shown = hover ?? s.total;
+  const clear = (t) => y(Math.max(...s.hist.slice(Math.max(0, t - 2), t + 3))) - 8; // 라벨이 옆 막대에 겹치지 않게 ±2점 중 가장 높은 막대 위에
+  return (
+    <figure>
+      <svg viewBox={`0 0 ${W} ${H}`} className="block h-auto w-full" role="img"
+        aria-label={`이번 달 점수별 인원: 모두 ${s.n}명, ${s.range[0]}~${s.range[1]}점 ${s.score}명. 표로 보기에서 구간별 숫자를 볼 수 있어요.`}>
+        {[0, max / 2, max].map((t, i) => (
+          <g key={t}>
+            <line x1={L} x2={W - R} y1={y(t)} y2={y(t)} stroke={i === 0 ? C.axis : C.grid} />
+            <text x={L - 6} y={y(t) + 3.5} textAnchor="end" fontSize="10" fill={C.muted}>{t}</text>
+          </g>
+        ))}
+        {s.hist.map((c, t) => c > 0 && <path key={t} d={bar(x(t) - (band - 2) / 2, y(c), band - 2, y(0) - y(c))} fill={near(t) ? ACCENT : REST} opacity={hover == null || hover === t ? 1 : 0.4} />)}
+        {[0, 5, 10, 15, 20, 27].map((t) => <text key={t} x={x(t)} y={H - B + 14} textAnchor="middle" fontSize="10" fill={C.muted}>{t}</text>)}
+        <text x={L + (W - L - R) / 2} y={H - 4} textAnchor="middle" fontSize="10" fill={C.muted}>2주 마음 점검 점수 (점)</text>
+        <text x={x(shown)} y={clear(shown)} textAnchor={shown < 3 ? 'start' : shown > 24 ? 'end' : 'middle'} fontSize="11" fontWeight="600" fill={C.ink}>
+          {hover == null ? `${name} ${s.total}점` : `${shown}점 ${s.hist[shown]}명`}
+        </text>
+        {s.hist.map((c, t) => (
+          <rect key={t} x={L + band * t} y={0} width={band} height={H - B} fill="transparent" tabIndex={c > 0 ? 0 : undefined} className="outline-none focus:fill-stone-900/5"
+            aria-label={`${t}점 ${c}명`} onMouseEnter={() => setHover(t)} onMouseLeave={() => setHover(null)} onFocus={() => setHover(t)} onBlur={() => setHover(null)} />
+        ))}
+      </svg>
+      <figcaption className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-xs text-stone-600">
+        <span className="flex items-center gap-1.5"><span className="size-2.5 rounded-sm" style={{ background: ACCENT }} aria-hidden="true" />{josa(name, '과', '와')} 비슷한 점수 ({s.range[0]}~{s.range[1]}점)</span>
+        <span className="flex items-center gap-1.5"><span className="size-2.5 rounded-sm" style={{ background: REST }} aria-hidden="true" />다른 점수</span>
+      </figcaption>
+    </figure>
+  );
+}
+
+function BandTable({ s }) {
+  const bands = [[0, 4], [5, 9], [10, 14], [15, 19], [20, 27]];
+  const sum = (lo, hi) => s.hist.slice(lo, hi + 1).reduce((a, b) => a + b, 0);
+  return (
+    <table className="w-full self-start text-sm tabular-nums">
+      <thead className="text-xs text-stone-500"><tr><th className="py-1 text-left font-normal">점수 구간</th><th className="text-right font-normal">사람 수</th></tr></thead>
+      <tbody>
+        {bands.map(([lo, hi], i) => (
+          <tr key={lo} className="border-t border-stone-100"><td className="py-1.5">{lo}~{hi}점 <span className="text-xs text-stone-500">{PHQ9.levels[i].label}</span></td><td className="text-right">{sum(lo, hi)}명</td></tr>
+        ))}
+        <tr className="border-t border-stone-300 font-medium"><td className="py-1.5">비슷한 점수 {s.range[0]}~{s.range[1]}점</td><td className="text-right">{s.score}명</td></tr>
+        <tr className="border-t border-stone-100"><td className="py-1.5">이번 달 모두</td><td className="text-right">{s.n}명</td></tr>
+      </tbody>
+    </table>
   );
 }
 

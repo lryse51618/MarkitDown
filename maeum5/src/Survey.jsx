@@ -158,6 +158,8 @@ function Result({ result, answers, onRestart }) {
           <p className="mt-5 text-xs leading-relaxed text-[#B0B8C1]">진단이 아닌 자기 점검 결과예요. 구간은 PHQ-9 표준 기준(0–4 · 5–9 · 10–14 · 15–19 · 20–27)을 따라요.</p>
         </section>
 
+        {result.similar && <Similar s={result.similar} />}
+
         {level.expert && !result.crisis && <Expert />}
 
         <section className="pt-3">
@@ -191,6 +193,35 @@ function Result({ result, answers, onRestart }) {
         </p>
       </main>
     </div>
+  );
+}
+
+// 이번 달 나와 비슷한 사람들: 실제 이용자 응답만 센다(시연용 가상 응답은 넣지 않는다)
+function Similar({ s }) {
+  const rows = [[`나와 비슷한 점수 (${s.range[0]}~${s.range[1]}점)`, s.score], s.part && [`나처럼 ‘${s.part.short}’ 때문에 자주 힘들었던 사람`, s.part.n]].filter(Boolean);
+  return (
+    <section className="rounded-3xl bg-white p-6">
+      <p className="text-[17px] font-bold text-[#191F28]">이번 달, 나와 비슷한 사람들</p>
+      {s.n === 0 ? (
+        <p className="mt-2 text-[15px] leading-relaxed text-[#4E5968]">이번 달 마음 점검은 내가 첫 번째예요. 다음에 점검하는 사람부터 나와 비슷한 사람이 몇 명인지 함께 보여드려요.</p>
+      ) : (
+        <>
+          <p className="mt-1 text-sm text-[#6B7684]">이번 달 마음 점검을 한 {s.n}명 중</p>
+          <ul className="mt-3 space-y-2">
+            {rows.map(([label, n]) => (
+              <li key={label} className="flex items-center gap-3 rounded-2xl bg-[#F9FAFB] px-4 py-3">
+                <span className="min-w-0 flex-1 text-[15px] leading-snug text-[#333D4B]">{label}</span>
+                <span className="shrink-0 text-[20px] font-bold text-[#191F28]">{n}명</span>
+              </li>
+            ))}
+          </ul>
+          <p className="mt-3 text-[15px] leading-relaxed text-[#4E5968]">
+            {rows.some(([, n]) => n > 0) ? '나만 이런 게 아니에요. 이번 달에도 비슷한 시기를 지나는 사람들이 있어요.' : '나와 꼭 같은 점수대는 아직 없지만, 이번 달에도 각자의 시기를 지나며 마음을 돌본 사람들이 있어요.'}
+          </p>
+        </>
+      )}
+      <p className="mt-3 text-xs leading-relaxed text-[#8B95A1]">실제 이용자 응답을 이름 없이 센 숫자예요. 나는 빼고 셌어요.</p>
+    </section>
   );
 }
 

@@ -90,6 +90,31 @@ const rng = (seed) => () => {
   return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
 };
 
+// 시연 대시보드용 가상 응답(2주 마음 점검): 이번 달 1일부터 오늘까지 하루 10~19명. 같은 달 같은 날이면 늘 같은 값이 나온다.
+// 실제 사람 응답이 아니다. 실제 결과 화면은 이걸 쓰지 않고 DB의 실제 응답만 센다.
+const BANDS = [[0, 4, 0.45], [5, 9, 0.3], [10, 14, 0.15], [15, 19, 0.07], [20, 24, 0.03]]; // 점수 구간 비율(가정)
+const ITEM_WEIGHT = [1, 1, 1.4, 1.5, 0.8, 1, 1.1, 0.6]; // 1~8번 문항에 점수가 실리는 정도(가정). 9번(자해 생각)은 0으로 둔다
+export function virtualSurveys(now) {
+  const rand = rng(now.getFullYear() * 100 + now.getMonth());
+  const rows = [];
+  for (let day = 1; day <= now.getDate(); day++) {
+    for (let k = 10 + Math.floor(rand() * 10); k > 0; k--) {
+      let u = rand();
+      const [lo, hi] = BANDS.find(([, , p]) => (u -= p) < 0) ?? BANDS.at(-1);
+      const total = lo + Math.floor(rand() * (hi - lo + 1));
+      const answers = Array(9).fill(0);
+      for (let pt = 0; pt < total; pt++) {
+        const w = ITEM_WEIGHT.map((x, i) => (answers[i] < 3 ? x : 0));
+        let v = rand() * w.reduce((sum, x) => sum + x, 0);
+        const i = w.findIndex((x) => (v -= x) < 0);
+        answers[i < 0 ? w.findLastIndex((x) => x > 0) : i]++;
+      }
+      rows.push({ total, answers });
+    }
+  }
+  return rows;
+}
+
 export function seed(db, today = new Date()) {
   const at = (i, hhmm) => {
     const d = new Date(today);

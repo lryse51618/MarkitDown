@@ -1,9 +1,9 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { DatabaseSync } from 'node:sqlite';
-import { CRISIS, EMOTIONS, SLOTS, cleanExtract, cleanReco, detectRisk, estimateBpm, insights, parseAnswers, phqLevel, rulePicks, slotStats } from './src/lib.js';
+import { CRISIS, EMOTIONS, SLOTS, cleanExtract, cleanReco, detectRisk, estimateBpm, insights, parseAnswers, phqLevel, rulePicks, similarStats, slotStats } from './src/lib.js';
 import { FEATURE_EVIDENCE, INTEREST, PERSONAS, PHQ9, PLANS, ROUTINES } from './src/content.js';
-import { seed } from './seed.js';
+import { seed, virtualSurveys } from './seed.js';
 import { distPath } from './static.js';
 
 const rand = (s = 7) => () => ((s = (s * 16807) % 2147483647) / 2147483647);
@@ -123,4 +123,34 @@ test('PHQ-9: 응답 검증 · 점수 구간 · 규칙 추천 · 모델 추천 �
   assert.equal(r.message, null);
   assert.equal(cleanReco({ picks: [], message: ' 오늘도 버텨 줘서 고마워요. ' }, ids, ['sigh', 'label', 'walk']).message, '오늘도 버텨 줘서 고마워요.');
   assert.deepEqual(cleanReco(null, ids, ['sigh', 'label', 'walk']).picks, ['sigh', 'label', 'walk']);
+});
+
+test('이번 달 비슷한 사람: 총점 ±2점, 가장 자주 방해받은 문항(9번 제외)으로 센다', () => {
+  const row = (answers) => ({ answers, total: answers.reduce((s, v) => s + v, 0) });
+  const rows = [row([2, 2, 2, 2, 1, 3, 1, 1, 0]), row([3, 3, 3, 3, 0, 0, 0, 0, 0]), row([0, 0, 0, 0, 0, 2, 0, 0, 0]), row([0, 0, 0, 0, 0, 0, 0, 0, 0])];
+  const s = similarStats(rows, [2, 2, 2, 2, 1, 3, 1, 1, 0], PHQ9.items);
+  assert.equal(s.n, 4);
+  assert.equal(s.total, 14);
+  assert.deepEqual(s.range, [12, 16]);
+  assert.equal(s.score, 2); // 14점, 12점
+  assert.deepEqual(s.part, { short: '자기 비난', n: 2 }); // 6번 문항 3점이 가장 큼
+  assert.equal(s.hist.length, 28);
+  assert.equal(s.hist[14], 1);
+  assert.equal(similarStats(rows, [1, 1, 0, 0, 0, 0, 0, 0, 3], PHQ9.items).part, null); // 9번만 높으면 같은 부분을 세지 않는다
+  assert.deepEqual(similarStats([], [0, 0, 0, 0, 0, 0, 0, 0, 0], PHQ9.items).range, [0, 2]);
+  for (const p of Object.values(PERSONAS)) assert.ok(parseAnswers(p.phq9), `${p.id} 페르소나 점검 응답`);
+});
+
+test('시연용 가상 응답: 같은 날이면 같은 값, 날이 갈수록 쌓이고, 9번(자해 생각)은 늘 0', () => {
+  const a = virtualSurveys(new Date('2026-11-06T09:00'));
+  const c = virtualSurveys(new Date('2026-11-07T09:00'));
+  assert.deepEqual(virtualSurveys(new Date('2026-11-06T21:00')), a);
+  assert.ok(c.length > a.length);
+  assert.deepEqual(c.slice(0, a.length), a);
+  for (const r of c) {
+    assert.equal(r.answers.length, 9);
+    assert.equal(r.answers[8], 0);
+    assert.ok(r.answers.every((v) => v >= 0 && v <= 3));
+    assert.equal(r.total, r.answers.reduce((sum, v) => sum + v, 0));
+  }
 });

@@ -5,10 +5,10 @@ import { join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 import Anthropic from '@anthropic-ai/sdk';
 import { createServer as createVite } from 'vite';
-import { seed } from './seed.js';
+import { seed, virtualSurveys } from './seed.js';
 import { serveStatic } from './static.js';
 import { PERSONAS, PHQ9, PLANS, ROUTINES } from './src/content.js';
-import { CRISIS, EMOTIONS, OK, SLOTS, cleanExtract, cleanReco, dateKey, detectRisk, parseAnswers, rulePicks, slotOf, slotStats, stamp } from './src/lib.js';
+import { CRISIS, EMOTIONS, OK, SLOTS, cleanExtract, cleanReco, dateKey, detectRisk, parseAnswers, rulePicks, similarStats, slotOf, slotStats, stamp } from './src/lib.js';
 
 const PORT = Number(process.env.PORT ?? 5173);
 const PROD = process.argv.includes('--prod');
@@ -35,11 +35,18 @@ const upsertDaily = q(`INSERT INTO daily (persona, date, sleep_h, caffeine_cups,
   ON CONFLICT (persona, date) DO UPDATE SET sleep_h = coalesce(excluded.sleep_h, sleep_h),
   caffeine_cups = coalesce(excluded.caffeine_cups, caffeine_cups), hr_bpm = coalesce(excluded.hr_bpm, hr_bpm)`);
 
+// 이번 달(1일부터) 실제 2주 마음 점검 응답
+const monthSurveys = (now) => q('SELECT total, answers FROM surveys WHERE ts >= ?').all(`${dateKey(now).slice(0, 7)}-01`).map((r) => ({ total: r.total, answers: JSON.parse(r.answers) }));
+
 function state(p) {
-  const from = new Date();
+  const now = new Date();
+  const from = new Date(now);
   from.setDate(from.getDate() - 13);
+  const virtual = virtualSurveys(now), real = monthSurveys(now);
   return {
     persona: PERSONAS[p],
+    // 시연 대시보드는 가상 응답 + 실제 응답으로 '이번 달 비슷한 사람'을 센다(화면에 둘을 나눠 적는다)
+    similar: { ...similarStats([...virtual, ...real], PERSONAS[p].phq9, PHQ9.items), virtual: virtual.length, real: real.length },
     daily: q('SELECT date, sleep_h, caffeine_cups, hr_bpm FROM daily WHERE persona = ? ORDER BY date DESC LIMIT 14').all(p).reverse(),
     checkins: q('SELECT ts, slot, emotion, mood, place, source FROM checkins WHERE persona = ? AND ts >= ? ORDER BY ts').all(p, dateKey(from)),
     messages: q("SELECT ts, role, content FROM messages WHERE persona = ? AND role != 'system' ORDER BY id").all(p),
@@ -199,9 +206,10 @@ async function recommend(answers) {
     }
   }
   const message = crisis ? PHQ9.crisisMessage : reco.message ?? PHQ9.defaultMessage;
+  const similar = similarStats(monthSurveys(now), answers, PHQ9.items); // 실제 응답만, 나는 넣기 전에 세서 빠진다
   const { lastInsertRowid } = q('INSERT INTO surveys (ts, answers, total, crisis, picks, source) VALUES (?, ?, ?, ?, ?, ?)')
     .run(stamp(now), JSON.stringify(answers), total, crisis ? 1 : 0, JSON.stringify(reco.picks), source);
-  return { id: Number(lastInsertRowid), total, crisis, message, picks: reco.picks, source };
+  return { id: Number(lastInsertRowid), total, crisis, message, picks: reco.picks, source, similar };
 }
 
 const explain = (e) =>

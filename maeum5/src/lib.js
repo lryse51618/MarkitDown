@@ -146,3 +146,18 @@ export function cleanReco(o, ids, fallbackPicks) {
   const message = typeof o?.message === 'string' ? o.message.trim().slice(0, 300) : '';
   return { picks: picks.slice(0, 3), message: message && !MEDICAL.test(message) ? message : null };
 }
+
+// 이번 달 나와 비슷한 사람(위로용 집계): 총점 ±2점 안인 사람 수, 내가 가장 자주 방해받은 문항(2점 이상, 9번 자해 생각 제외)에 같이 2점 이상인 사람 수
+export function similarStats(rows, answers, items) {
+  const total = answers.reduce((s, v) => s + v, 0);
+  let top = -1;
+  answers.slice(0, 8).forEach((v, i) => { if (v >= 2 && (top < 0 || v > answers[top])) top = i; });
+  return {
+    n: rows.length,
+    total,
+    range: [Math.max(0, total - 2), Math.min(27, total + 2)],
+    score: rows.filter((r) => Math.abs(r.total - total) <= 2).length,
+    part: top < 0 ? null : { short: items[top].short, n: rows.filter((r) => r.answers[top] >= 2).length },
+    hist: Array.from({ length: 28 }, (_, t) => rows.filter((r) => r.total === t).length),
+  };
+}
