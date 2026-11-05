@@ -146,3 +146,38 @@ export function cleanReco(o, ids, fallbackPicks) {
   const message = typeof o?.message === 'string' ? o.message.trim().slice(0, 300) : '';
   return { picks: picks.slice(0, 3), message: message && !MEDICAL.test(message) ? message : null };
 }
+
+// 받침 붙이기: 과부하를 / 우울을
+export const josa = (word, withFinal, without) => word + ((word.charCodeAt(word.length - 1) - 0xac00) % 28 ? withFinal : without);
+
+// 지금 체크: 감정 × 장소 × 시간대 매트릭스에 내 기록(해보고 나아졌던 비율)을 더해 5분 행동 순위를 낸다. AI를 쓰지 않는다(비용 0원).
+const OK_POOL = ['walk', 'hello', 'reread'];
+export function pickNow(routines, { emotion, place, slot, leaves = [] }) {
+  const mine = (id) => {
+    const xs = leaves.filter((l) => l.routine === id);
+    return xs.length ? xs.filter((l) => l.after > 0).length / xs.length : 0.5; // 안 해본 행동은 중간값
+  };
+  return routines
+    .filter((r) => (emotion === OK ? OK_POOL.includes(r.id) : r.emotion === emotion))
+    .map((r) => ({ r, score: (r.places.includes(place) ? 2 : 0) + (r.slots.includes(slot) ? 1 : 0) + mine(r.id) }))
+    .sort((a, b) => b.score - a.score)
+    .map((x) => x.r);
+}
+
+// 나와의 약속: 정한 시간대가 오면 보여준다. 만든 뒤 6시간, 보여준 뒤 6시간은 다시 띄우지 않는다(자정을 넘는 '밤'도 한 번만).
+const hoursSince = (ts, now) => (now - new Date(ts)) / 36e5;
+export const duePromise = (promises, now) =>
+  promises.find((p) => p.slot === slotOf(now) && hoursSince(p.from, now) >= 6 && (!p.shown || hoursSince(p.shown, now) >= 6)) ?? null;
+
+// 마음 정원 요약: 잎 수, 나아진 횟수, 감정별 잎, 기록한 날 수, 내게 잘 맞았던 행동(2번 이상 해본 것)
+export function gardenStats(leaves) {
+  const by = {}, per = {};
+  for (const l of leaves) {
+    by[l.emotion ?? OK] = (by[l.emotion ?? OK] ?? 0) + 1;
+    const x = (per[l.routine] ??= { id: l.routine, n: 0, better: 0 });
+    x.n++;
+    if (l.after > 0) x.better++;
+  }
+  const best = Object.values(per).filter((x) => x.n >= 2).sort((a, b) => b.better / b.n - a.better / a.n || b.n - a.n).slice(0, 3);
+  return { n: leaves.length, better: leaves.filter((l) => l.after > 0).length, by, days: new Set(leaves.map((l) => l.ts.slice(0, 10))).size, best };
+}

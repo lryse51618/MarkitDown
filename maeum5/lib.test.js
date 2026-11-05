@@ -1,8 +1,8 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { DatabaseSync } from 'node:sqlite';
-import { CRISIS, EMOTIONS, SLOTS, cleanExtract, cleanReco, detectRisk, estimateBpm, insights, parseAnswers, phqLevel, rulePicks, slotStats } from './src/lib.js';
-import { FEATURE_EVIDENCE, INTEREST, PERSONAS, PHQ9, PLANS, ROUTINES } from './src/content.js';
+import { CRISIS, EMOTIONS, OK, SLOTS, cleanExtract, cleanReco, detectRisk, duePromise, estimateBpm, gardenStats, insights, parseAnswers, phqLevel, pickNow, rulePicks, slotStats } from './src/lib.js';
+import { FEATURE_EVIDENCE, INTEREST, PERSONAS, PHQ9, PLACES, PLANS, ROUTINES } from './src/content.js';
 import { seed } from './seed.js';
 import { distPath } from './static.js';
 
@@ -123,4 +123,44 @@ test('PHQ-9: 응답 검증 · 점수 구간 · 규칙 추천 · 모델 추천 �
   assert.equal(r.message, null);
   assert.equal(cleanReco({ picks: [], message: ' 오늘도 버텨 줘서 고마워요. ' }, ids, ['sigh', 'label', 'walk']).message, '오늘도 버텨 줘서 고마워요.');
   assert.deepEqual(cleanReco(null, ids, ['sigh', 'label', 'walk']).picks, ['sigh', 'label', 'walk']);
+});
+
+test('지금 체크: 감정 × 장소 매트릭스는 모든 칸에서 그 장소에 맞는 행동을 먼저 고른다', () => {
+  for (const r of ROUTINES) assert.ok(r.places.length && r.places.every((p) => PLACES.some((x) => x.id === p)), r.id);
+  for (const emotion of [...EMOTIONS, OK]) {
+    for (const { id } of PLACES) {
+      const [top] = pickNow(ROUTINES, { emotion, place: id, slot: '낮' });
+      assert.ok(top.places.includes(id), `${emotion} @ ${id} → ${top.id}`);
+    }
+  }
+  // 동점이면 내 기록에서 나아졌던 행동이 먼저
+  const base = { emotion: '불안·과부하', place: 'desk', slot: '낮' };
+  assert.equal(pickNow(ROUTINES, base)[0].id, 'box');
+  const leaves = [['sigh', 2], ['sigh', 1], ['box', 0], ['box', 0]].map(([routine, after]) => ({ ts: '2026-11-01T10:00', routine, after }));
+  assert.equal(pickNow(ROUTINES, { ...base, leaves })[0].id, 'sigh');
+});
+
+test('나와의 약속: 정한 시간대에 하루 한 번, 만든 직후와 자정 넘은 같은 밤에는 다시 안 뜬다', () => {
+  const p = { id: 1, slot: '아침', routine: 'toes', from: '2026-11-05T21:00', shown: null };
+  assert.equal(duePromise([p], new Date('2026-11-06T09:00')), p);
+  assert.equal(duePromise([p], new Date('2026-11-05T21:30')), null); // 아직 저녁
+  assert.equal(duePromise([{ ...p, shown: '2026-11-06T09:00' }], new Date('2026-11-06T10:00')), null); // 오늘 이미 봄
+  const night = { id: 2, slot: '밤', routine: 'todo', from: '2026-11-05T23:00', shown: null };
+  assert.equal(duePromise([night], new Date('2026-11-06T01:00')), null); // 만든 그 밤
+  assert.equal(duePromise([night], new Date('2026-11-06T23:00')), night);
+});
+
+test('마음 정원 요약: 잎·나아짐·기록한 날·내게 맞는 행동', () => {
+  const leaves = [
+    { ts: '2026-11-01T09:00', emotion: '무기력·우울', routine: 'toes', after: 1 },
+    { ts: '2026-11-01T22:00', emotion: '불안·과부하', routine: 'sigh', after: 2 },
+    { ts: '2026-11-02T09:00', emotion: '무기력·우울', routine: 'toes', after: 0 },
+    { ts: '2026-11-03T09:00', emotion: null, routine: 'toes', after: 2 },
+  ];
+  const g = gardenStats(leaves);
+  assert.equal(g.n, 4);
+  assert.equal(g.better, 3);
+  assert.equal(g.days, 3);
+  assert.deepEqual(g.by, { '무기력·우울': 2, '불안·과부하': 1, [OK]: 1 });
+  assert.deepEqual(g.best, [{ id: 'toes', n: 3, better: 2 }]);
 });

@@ -13,7 +13,9 @@
 @keyframes slide { from { opacity: 0; transform: translateX(28px); } to { opacity: 1; transform: none; } }
 .enter { animation: enter 0.4s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
 .slide { animation: slide 0.35s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
-@media (prefers-reduced-motion: reduce) { .enter, .slide { animation: none; } }
+@keyframes grow { from { transform: scale(0); } to { transform: scale(1); } }
+.grow { animation: grow 0.7s cubic-bezier(0.2, 0.8, 0.2, 1) both; transform-origin: 0 0; }
+@media (prefers-reduced-motion: reduce) { .enter, .slide, .grow { animation: none; } }
 
 /* 한국어는 단어 중간에서 줄바꿈하지 않게 */
 body { word-break: keep-all; overflow-wrap: break-word; }
