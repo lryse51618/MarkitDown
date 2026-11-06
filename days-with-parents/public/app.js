@@ -147,7 +147,8 @@
   }
   let counter;
   function renderCount(age) {
-    const { leftVisits } = D.lifeMath(age);
+    const { leftVisits, leftYears } = D.lifeMath(age);
+    $('countNote').innerHTML = `통계청 2024년 생명표에서 ${age}세의 기대여명(남녀 평균 약 ${leftYears.toFixed(1)}년)으로 계산했어요. 실제 남은 시간은 사람마다 달라요.<br>따로 사는 부모와의 왕래는 연 12회(중윗값)입니다. &mdash; 한국복지패널`;
     const el = $('leftNum');
     $('countTitle').setAttribute('aria-label', `앞으로 남은 만남 ${leftVisits.toLocaleString()}번`);
     clearInterval(counter);
@@ -163,7 +164,7 @@
   function renderLife(age) {
     const m = lifeGrid($('lifeGrid2'), age);
     $('lvTitle').innerHTML = `남은 칸은 <span class="hl">${m.leftMonths.toLocaleString()}</span>달입니다.`;
-    $('lvNote').innerHTML = `부모님 ${age}세 · 통계청 기대수명(약 ${D.LIFE_EXPECT}세)까지로 단순하게 계산했어요.<br>자주 보실 필요는 없습니다. 가끔 떠올려만 주세요.`;
+    $('lvNote').innerHTML = `부모님 ${age}세 · 2024년 생명표 기대여명(남녀 평균 약 ${m.leftYears.toFixed(1)}년)으로 계산했어요.<br>자주 보실 필요는 없습니다. 가끔 떠올려만 주세요.`;
   }
 
   /* ---------- 메인: 지난 1년 ---------- */
@@ -329,6 +330,49 @@
     delAudio(key).catch(() => {});
     toast('기록을 지웠어요');
     back();
+  });
+
+  /* ---------- 백업: 파일로 내보내기 · 가져오기 (휴대폰을 바꿀 때) ---------- */
+  const toDataUrl = (blob) => new Promise((ok, no) => { const r = new FileReader(); r.onload = () => ok(r.result); r.onerror = () => no(r.error); r.readAsDataURL(blob); });
+  $('exportBtn').addEventListener('click', async () => {
+    const audio = {};
+    for (const [k, r] of Object.entries(S.records)) {
+      if (!r.audio) continue;
+      const blob = await getAudio(k).catch(() => null);
+      if (blob) audio[k] = await toDataUrl(blob);
+    }
+    const data = { app: 'days_with_parents', version: 1, exportedAt: new Date().toISOString(), parentAge: S.parentAge, ageYear: S.ageYear, records: S.records, audio };
+    const url = URL.createObjectURL(new Blob([JSON.stringify(data)], { type: 'application/json' }));
+    // 파일 이름은 영어로: 한글 이름은 일부 브라우저에서 "download"로 바뀐다
+    const a = Object.assign(document.createElement('a'), { href: url, download: `days-with-parents-${today()}.json` });
+    document.body.append(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 10000);
+    toast(`기록 ${Object.keys(S.records).length}개를 파일로 저장했어요`);
+  });
+  document.addEventListener('click', (e) => { if (e.target.closest('[data-import]')) $('importIn').click(); });
+  $('importIn').addEventListener('change', async (e) => {
+    const file = e.target.files[0];
+    e.target.value = '';
+    if (!file) return;
+    let got = null;
+    try { got = D.cleanBackup(JSON.parse(await file.text())); } catch { /* 아래에서 안내 */ }
+    if (!got) return toast('남은 날들 기록 파일이 아니에요');
+    const n = Object.keys(got.records).length;
+    if (!confirm(`기록 ${n}개를 가져올까요? 같은 날짜 기록은 파일 내용으로 바뀌어요.`)) return;
+    let lost = 0;
+    for (const [k, r] of Object.entries(got.records)) {
+      if (got.audio[k]) {
+        try { await putAudio(k, await (await fetch(got.audio[k])).blob()); }
+        catch { r.audio = false; r.level = r.text ? 3 : r.how; lost++; }
+      } else if (S.records[k]?.audio) delAudio(k).catch(() => {});
+    }
+    S.records = { ...S.records, ...got.records };
+    if (S.parentAge == null && got.parentAge != null) { S.parentAge = got.parentAge; S.ageYear = got.ageYear ?? new Date().getFullYear(); }
+    save();
+    toast(lost ? `기록 ${n}개를 가져왔어요. 목소리 ${lost}개는 담지 못했어요` : `기록 ${n}개를 가져왔어요`);
+    go(S.parentAge == null ? 'age' : 'home');
   });
 
   let toastT;

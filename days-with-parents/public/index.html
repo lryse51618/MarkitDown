@@ -21,6 +21,7 @@
       <h1 tabindex="-1">부모님과 앞으로<br>몇 번이나 만날까요?</h1>
       <p class="sub">세어본 적 없을 거예요.<br>한 번 같이 세어보려고 합니다.</p>
       <button type="button" class="btn" data-go="age">시작하기</button>
+      <button type="button" class="text-link" data-import>예전 기록 파일이 있나요? 가져오기</button>
     </div>
   </section>
 
@@ -62,7 +63,7 @@
       <div class="big-pct" id="leftNum" aria-hidden="true">—</div>
       <h1 tabindex="-1" id="countTitle" class="after-num">번.</h1>
       <p class="sub">보통 따로 사는 부모님은 한 달에 한 번 뵙습니다.<br>그 속도라면, 앞으로 남은 만남입니다.</p>
-      <p class="note">통계청 기대수명(약 84세)까지로 단순하게 계산했어요. 실제 남은 시간은 사람마다 달라요.<br>따로 사는 부모와의 왕래는 연 12회(중앙값)입니다. &mdash; 한국복지패널</p>
+      <p class="note" id="countNote"></p>
       <button type="button" class="btn" data-go="home">남은 칸 채우러 가기</button>
     </div>
   </section>
@@ -132,10 +133,14 @@
         <button class="btn">저장하기</button>
       </form>
       <div class="card rows">
+        <button type="button" class="row-btn" id="exportBtn">기록 파일로 내보내기</button>
+        <button type="button" class="row-btn" data-import>기록 파일 가져오기</button>
+      </div>
+      <p class="note">기록과 목소리는 이 기기의 브라우저에만 저장되고 서버로 보내지 않아요. 휴대폰을 바꾸거나 브라우저 데이터를 지우기 전에 파일로 내보내 두세요. 목소리도 함께 담겨요.</p>
+      <div class="card rows">
         <button type="button" class="row-btn" data-go="start">처음 화면 다시 보기</button>
         <button type="button" class="row-btn danger" id="wipeBtn">모든 기록 지우기</button>
       </div>
-      <p class="note">기록과 목소리는 이 기기의 브라우저에만 저장돼요. 서버로 보내지 않아요. 브라우저 데이터를 지우거나 다른 기기에서 열면 보이지 않아요.</p>
     </div>
   </section>
 
@@ -165,6 +170,7 @@
   </div>
 
   <div id="toast" class="toast" role="status"></div>
+  <input type="file" id="importIn" accept="application/json,.json" hidden>
 </div>
 <script src="lib.js"></script>
 <script src="app.js"></script>

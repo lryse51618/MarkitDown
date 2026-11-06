@@ -109,6 +109,7 @@ h1.after-num { margin-top: 14px; }
 .btn:active { opacity: .7; }
 .btn:disabled { background: var(--surface-2); color: var(--text-faint); cursor: default; }
 .btn-ghost { background: none; color: var(--text-dim); border: 1px solid var(--line); margin-top: 12px; }
+.text-link { margin-top: 18px; padding: 8px 0; font-size: 13px; color: var(--text-dim); text-decoration: underline; text-underline-offset: 3px; }
 
 /* 인생 그리드: 한 칸 = 한 달 */
 .life-grid { margin: 30px 0 24px; display: grid; grid-template-columns: repeat(36, 4px); gap: 3px; justify-content: center; }

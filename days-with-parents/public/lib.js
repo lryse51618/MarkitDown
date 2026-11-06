@@ -1,7 +1,9 @@
 // 남은 날들 — 계산만 모은 곳(화면 코드 없음). 브라우저에서는 window.Days, 테스트(Node)에서는 require로 쓴다.
 (function (root) {
-  const LIFE_EXPECT = 84; // 통계청 생명표의 기대수명(출생 시) 근처 값으로 단순 계산 (가정)
-  const VISITS_PER_YEAR = 12; // 따로 사는 부모와의 왕래 연 12회(중앙값, 한국복지패널)
+  const VISITS_PER_YEAR = 12; // 따로 사는 부모와의 왕래 연 12회(중윗값, 평균 42회) — 한국복지패널 제19차 조사
+  // 나이별 기대여명(앞으로 더 살 것으로 기대되는 햇수) [나이, 남자, 여자] — 통계청(국가데이터처) 2024년 생명표.
+  // 90세·100세 이상 값은 보도자료 표를 옮긴 자료 기준이라 원표로 한 번 더 확인할 것
+  const LIFE_TABLE = [[40, 41.9, 47.4], [60, 23.7, 28.4], [65, 19.5, 23.7], [70, 15.5, 19.2], [80, 8.5, 10.9], [90, 4.0, 5.1], [100, 1.9, 2.3]];
 
   const pad = (n) => String(n).padStart(2, '0');
   // 날짜 키는 기기 시간대 기준. toISOString()은 UTC라 한국에서는 오전 9시 전까지 하루 밀린다
@@ -18,10 +20,37 @@
   // 입력한 해를 같이 저장해서, 해가 바뀌면 한 살씩 늘린다
   const ageNow = (s, now) => (s.parentAge == null ? null : s.parentAge + (now.getFullYear() - (s.ageYear ?? now.getFullYear())));
 
+  // 표의 나이 사이는 직선으로 잇고 남녀 값의 평균을 쓴다(70세 남녀 전체 17.5년과 0.15년 차이). 100세 넘으면 100세 이상 값
+  function yearsLeft(age) {
+    const a = Math.max(age, LIFE_TABLE[0][0]);
+    const i = LIFE_TABLE.findIndex(([x]) => x > a);
+    if (i === -1) { const [, m, f] = LIFE_TABLE.at(-1); return (m + f) / 2; }
+    const [a0, m0, f0] = LIFE_TABLE[i - 1], [a1, m1, f1] = LIFE_TABLE[i];
+    const k = (a - a0) / (a1 - a0);
+    return (m0 + (m1 - m0) * k + f0 + (f1 - f0) * k) / 2;
+  }
   function lifeMath(age) {
-    const life = Math.max(LIFE_EXPECT, age + 1); // 기대수명을 넘긴 분도 1년은 남은 것으로 센다
-    const yearsLeft = life - age;
-    return { total: life * 12, spent: age * 12, leftMonths: yearsLeft * 12, leftPct: Math.round((yearsLeft / life) * 100), leftVisits: yearsLeft * VISITS_PER_YEAR };
+    const left = Math.max(1, Math.round(yearsLeft(age) * 12)); // 남은 달
+    const spent = age * 12;
+    return { total: spent + left, spent, leftMonths: left, leftYears: left / 12, leftPct: Math.max(1, Math.round((left / (spent + left)) * 100)), leftVisits: Math.round((left / 12) * VISITS_PER_YEAR) };
+  }
+
+  // 백업 파일(가져오기) 검사: 이 앱 파일인지, 날짜·값·목소리 형식이 맞는지. 이상한 값은 버린다
+  const AUDIO_URL = /^data:audio\/[\w.+-]+(;[\w.+=-]+)*;base64,[A-Za-z0-9+/=]+$/;
+  function cleanBackup(o) {
+    if (o?.app !== 'days_with_parents' || !o.records || typeof o.records !== 'object') return null;
+    const records = {}, audio = {};
+    for (const [k, r] of Object.entries(o.records)) {
+      if (!parseKey(k) || !r || typeof r !== 'object') continue;
+      const how = r.how === 1 || r.how === 2 ? r.how : r.level === 1 ? 1 : 2;
+      const text = typeof r.text === 'string' ? r.text.trim().slice(0, 1000) : '';
+      const clip = o.audio?.[k];
+      const hasAudio = typeof clip === 'string' && AUDIO_URL.test(clip);
+      records[k] = { how, level: text || hasAudio ? 3 : how, text, audio: hasAudio };
+      if (hasAudio) audio[k] = clip;
+    }
+    const okAge = Number.isInteger(o.parentAge) && o.parentAge >= 40 && o.parentAge <= 110;
+    return { records, audio, parentAge: okAge ? o.parentAge : null, ageYear: okAge && Number.isInteger(o.ageYear) ? o.ageYear : null };
   }
 
   // 최근 1년 달력: 일요일로 시작하는 주 단위, 마지막 주는 토요일까지 채우고 오늘 뒤 칸은 future
@@ -60,7 +89,7 @@
   const hash = (s) => { let h = 0; for (const c of s) h = (h * 31 + c.charCodeAt(0)) | 0; return h; };
   const questionFor = (k) => QUESTIONS[Math.abs(hash(k)) % QUESTIONS.length]; // 같은 날은 늘 같은 질문
 
-  const api = { LIFE_EXPECT, VISITS_PER_YEAR, dayKey, parseKey, dotted, spoken, ageNow, lifeMath, yearDays, monthLabels, questionFor };
+  const api = { VISITS_PER_YEAR, dayKey, parseKey, dotted, spoken, ageNow, yearsLeft, lifeMath, cleanBackup, yearDays, monthLabels, questionFor };
   if (typeof module === 'object' && module.exports) module.exports = api;
   else root.Days = api;
 })(this);
