@@ -1,0 +1,172 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>남은 날들</title>
+<meta name="description" content="부모님과 앞으로 몇 번이나 만날 수 있을지 세어 보고, 함께한 날을 한 칸씩 채워 가요.">
+<meta property="og:title" content="남은 날들">
+<meta property="og:description" content="부모님과 앞으로 몇 번이나 만날까요? 함께한 날을 한 칸씩 채워 가요.">
+<meta name="theme-color" content="#0a0a0c">
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div id="phone">
+
+  <!-- 시작 -->
+  <section class="screen" data-route="start">
+    <div class="pad center">
+      <div class="eyebrow">// days_with_parents</div>
+      <h1 tabindex="-1">부모님과 앞으로<br>몇 번이나 만날까요?</h1>
+      <p class="sub">세어본 적 없을 거예요.<br>한 번 같이 세어보려고 합니다.</p>
+      <button type="button" class="btn" data-go="age">시작하기</button>
+    </div>
+  </section>
+
+  <!-- 1. 나이 -->
+  <section class="screen" data-route="age">
+    <header class="bar"><button type="button" class="icon-btn" data-back aria-label="이전">←</button><span class="step">1 / 3</span></header>
+    <div class="pad center">
+      <div class="eyebrow">// 01</div>
+      <h1 tabindex="-1">부모님은<br>올해 몇 세이신가요?</h1>
+      <p class="sub">두 분 중 더 연세가 많으신 분 기준으로<br>적어주세요.</p>
+      <form id="ageForm" novalidate>
+        <div class="age-input">
+          <input type="number" id="ageIn" placeholder="68" min="40" max="110" inputmode="numeric" aria-label="부모님 나이" aria-describedby="ageHint">
+          <span aria-hidden="true">세</span>
+        </div>
+        <p class="hint" id="ageHint">40~110세 사이로 적어주세요.</p>
+        <button class="btn" id="ageBtn" disabled>다음</button>
+      </form>
+    </div>
+  </section>
+
+  <!-- 2. 지나간 달 · 남은 달 -->
+  <section class="screen" data-route="grid">
+    <header class="bar"><button type="button" class="icon-btn" data-back aria-label="이전">←</button><span class="step">2 / 3</span></header>
+    <div class="pad center">
+      <div class="eyebrow">// 지나간 날 · 남은 날</div>
+      <h1 tabindex="-1" id="gridTitle"></h1>
+      <div class="life-grid" id="lifeGrid" role="img"></div>
+      <p class="sub">어두운 칸은 이미 지나간 달이고,<br>밝은 칸은 앞으로 남은 달입니다.</p>
+      <button type="button" class="btn" data-go="count">다음</button>
+    </div>
+  </section>
+
+  <!-- 3. 남은 만남 -->
+  <section class="screen" data-route="count">
+    <header class="bar"><button type="button" class="icon-btn" data-back aria-label="이전">←</button><span class="step">3 / 3</span></header>
+    <div class="pad center">
+      <div class="eyebrow">// 남은 만남</div>
+      <div class="big-pct" id="leftNum" aria-hidden="true">—</div>
+      <h1 tabindex="-1" id="countTitle" class="after-num">번.</h1>
+      <p class="sub">보통 따로 사는 부모님은 한 달에 한 번 뵙습니다.<br>그 속도라면, 앞으로 남은 만남입니다.</p>
+      <p class="note">통계청 기대수명(약 84세)까지로 단순하게 계산했어요. 실제 남은 시간은 사람마다 달라요.<br>따로 사는 부모와의 왕래는 연 12회(중앙값)입니다. &mdash; 한국복지패널</p>
+      <button type="button" class="btn" data-go="home">남은 칸 채우러 가기</button>
+    </div>
+  </section>
+
+  <!-- 메인: 지난 1년 -->
+  <section class="screen" data-route="home">
+    <div class="pad top">
+      <div>
+        <div class="label">지난 1년 · 함께한 날</div>
+        <h1 tabindex="-1" class="count"><span id="litCount">0</span><em>일</em></h1>
+      </div>
+      <div class="top-actions">
+        <button type="button" class="linkish" data-go="life">남은 시간 보기</button>
+        <button type="button" class="linkish" data-go="settings">설정</button>
+      </div>
+    </div>
+
+    <div class="pad scroll">
+      <div class="year" id="yearScroll">
+        <div class="months" id="monthRow" aria-hidden="true"></div>
+        <div class="year-grid" id="yearGrid" role="group" aria-label="지난 1년 달력. 날짜를 누르면 그날을 기록해요"></div>
+      </div>
+      <div class="legend" aria-hidden="true">
+        <span>적음</span>
+        <i style="background:var(--dot-empty)"></i>
+        <i style="background:var(--dot-1)"></i>
+        <i style="background:var(--dot-2)"></i>
+        <i style="background:var(--dot-3)"></i>
+        <span>많음</span>
+      </div>
+      <label class="other-day">다른 날 기록하기 <input type="date" id="pickDay"></label>
+
+      <h2 class="section-t">// 남긴 기록</h2>
+      <div id="recList"></div>
+    </div>
+
+    <div class="dock pad">
+      <button type="button" class="btn" id="todayBtn">오늘 뵀어요</button>
+    </div>
+  </section>
+
+  <!-- 남은 시간 보기 -->
+  <section class="screen" data-route="life">
+    <header class="bar"><button type="button" class="icon-btn" data-back aria-label="닫기">✕</button></header>
+    <div class="pad center">
+      <div class="eyebrow">// 함께할 날</div>
+      <h1 tabindex="-1" id="lvTitle" class="h-sm"></h1>
+      <div class="life-grid" id="lifeGrid2" role="img"></div>
+      <p class="note" id="lvNote"></p>
+      <button type="button" class="btn btn-ghost" data-go="settings">부모님 나이 바꾸기</button>
+    </div>
+  </section>
+
+  <!-- 설정 -->
+  <section class="screen" data-route="settings">
+    <header class="bar"><button type="button" class="icon-btn" data-back aria-label="이전">←</button></header>
+    <div class="pad">
+      <div class="eyebrow">// settings</div>
+      <h1 tabindex="-1">설정</h1>
+      <form id="setForm" class="card" novalidate>
+        <label class="field-l" for="setAge">부모님 나이</label>
+        <div class="age-input small">
+          <input type="number" id="setAge" min="40" max="110" inputmode="numeric">
+          <span aria-hidden="true">세</span>
+        </div>
+        <p class="hint">나이를 바꾸면 남은 만남 계산이 바뀌어요. 기록은 그대로예요.</p>
+        <button class="btn">저장하기</button>
+      </form>
+      <div class="card rows">
+        <button type="button" class="row-btn" data-go="start">처음 화면 다시 보기</button>
+        <button type="button" class="row-btn danger" id="wipeBtn">모든 기록 지우기</button>
+      </div>
+      <p class="note">기록과 목소리는 이 기기의 브라우저에만 저장돼요. 서버로 보내지 않아요. 브라우저 데이터를 지우거나 다른 기기에서 열면 보이지 않아요.</p>
+    </div>
+  </section>
+
+  <!-- 하루 기록 (주소: #/day/YYYY-MM-DD) -->
+  <div id="sheet" class="sheet" role="dialog" aria-modal="true" aria-labelledby="shDate" inert>
+    <div class="sheet-body">
+      <div class="grab"></div>
+      <div class="sheet-head">
+        <div class="sheet-date" id="shDate" tabindex="-1"></div>
+        <button type="button" class="icon-btn" data-back aria-label="닫기">✕</button>
+      </div>
+      <p class="sheet-q" id="shQ"></p>
+      <div class="levels" role="group" aria-label="어떻게 함께했나요">
+        <button type="button" class="lv" data-lv="1" aria-pressed="false">통화했어요</button>
+        <button type="button" class="lv" data-lv="2" aria-pressed="false">만났어요</button>
+      </div>
+      <textarea id="shText" placeholder="한 줄만 남겨도 됩니다." aria-label="남길 말" maxlength="1000"></textarea>
+      <div class="mic-row">
+        <button type="button" class="mic" id="micBtn" aria-label="목소리 녹음">●</button>
+        <div class="mic-txt" id="micTxt" aria-live="polite"></div>
+      </div>
+      <audio id="player" controls hidden></audio>
+      <button type="button" class="btn" id="saveBtn">저장하기</button>
+      <button type="button" class="btn btn-ghost" id="delBtn" hidden>이 날 기록 지우기</button>
+      <div class="opt">기록은 선택입니다. 버튼만 눌러도 칸은 켜져요.</div>
+    </div>
+  </div>
+
+  <div id="toast" class="toast" role="status"></div>
+</div>
+<script src="lib.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
