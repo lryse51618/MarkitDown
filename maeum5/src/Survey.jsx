@@ -149,7 +149,7 @@ function Result({ result, answers, onRestart }) {
           <Meter total={result.total} />
           {top.length > 0 && (
             <div className="mt-5">
-              <p className="text-sm text-[#8B95A1]">특히 자주 방해받은 부분</p>
+              <p className="text-sm text-[#8B95A1]">특히 자주 힘들었던 부분</p>
               <div className="mt-2 flex flex-wrap gap-2">
                 {top.map((t) => <span key={t} className="rounded-full bg-[#F2F4F6] px-3 py-1.5 text-sm font-medium text-[#4E5968]">{t}</span>)}
               </div>
